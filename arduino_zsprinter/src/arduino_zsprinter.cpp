@@ -796,6 +796,16 @@ void showString (char *s)
 	printf("%s",s);
 }
 
+void initializeOLED(){
+  SeeedOled.init();  //initialze SEEED OLED display
+  SeeedOled.clearDisplay();          //clear the screen and set start position to top left corn    er
+  SeeedOled.setNormalDisplay();      //Set display to normal mode (i.e non-inverse mode)
+  SeeedOled.setPageMode();           //Set addressing mode to Page Mode
+  SeeedOled.setTextXY(0,0);          //Set the cursor to Xth Page, Yth Column
+  SeeedOled.putString("ZSprinter2"); //Print the String
+}
+
+unsigned long previous_millis_mainloop;
 //------------------------------------------------
 // Init 
 //------------------------------------------------
@@ -808,12 +818,9 @@ void setup() {
 	showString("\r\n");
 	showString("start\r\n");
 
-  SeeedOled.init();  //initialze SEEED OLED display
-  SeeedOled.clearDisplay();          //clear the screen and set start position to top left corn    er
-  SeeedOled.setNormalDisplay();      //Set display to normal mode (i.e non-inverse mode)
-  SeeedOled.setPageMode();           //Set addressing mode to Page Mode
-  SeeedOled.setTextXY(0,0);          //Set the cursor to Xth Page, Yth Column
-  SeeedOled.putString("ZSprinter2"); //Print the String
+  initializeOLED();
+  previous_millis_mainloop = millis();
+  MAILBOX_CMD_ADDR = 0x0;
 
 	initializeGPIO();
 	initializeAxiTimer();
@@ -1029,6 +1036,17 @@ void setup() {
 
 }
 
+void clean_display(int x_position, int y_position){
+   SeeedOled.setTextXY(x_position,y_position);          //Set the cursor to Xth Page, Yth Column
+   SeeedOled.putString("                "); //Print the String
+   SeeedOled.setTextXY(x_position+1,y_position);          //Set the cursor to Xth Page, Yth Column
+   SeeedOled.putString("                "); //Print the String
+   SeeedOled.setTextXY(x_position+2,y_position);          //Set the cursor to Xth Page, Yth Column
+   SeeedOled.putString("                "); //Print the String
+   SeeedOled.setTextXY(x_position+3,y_position);          //Set the cursor to Xth Page, Yth Column
+   SeeedOled.putString("                "); //Print the String
+}
+
 void analyze_command(){
    int x_position, y_position, length;
    char ch[64];
@@ -1043,75 +1061,87 @@ void analyze_command(){
    }
    ch[i]='\0'; // make sure it is null terminated string
 
-/*
-   char ch1[16],ch2[16],ch3[16],ch4[16];
-   strncpy ( ch1, ch, 16 );
-   strncpy ( ch1, ch+16, 16 );
-   strncpy ( ch1, ch+32, 16 );
-   strncpy ( ch1, ch+48, 16 );
+   char ch1[17];
+   char ch2[17];
+   char ch3[17];
+   char ch4[17];
+   
    int row_nums = (int) (length / 16);
+   char row_num_char[8];
+
    switch(row_nums){
+     clean_display(x_position,y_position);
    case 0:
      SeeedOled.setTextXY(x_position,y_position);          //Set the cursor to Xth Page, Yth Column
      SeeedOled.putString(ch); //Print the String
      break;
-    case 1:
+   case 1:
+     memcpy ( ch1, ch, 16 );
+     memcpy ( ch2, &ch[16], 16 );
+     ch1[17] = '\0';
+     ch2[17] = '\0';
      SeeedOled.setTextXY(x_position,y_position);          //Set the cursor to Xth Page, Yth Column
      SeeedOled.putString(ch1); //Print the String
-     //SeeedOled.setTextXY(x_position+1,y_position);          //Set the cursor to Xth Page, Yth Column
-     //SeeedOled.putString(ch2); //Print the String
+     SeeedOled.setTextXY(x_position+1,y_position);          //Set the cursor to Xth Page, Yth Column
+     SeeedOled.putString(ch2); //Print the String
      break;
-    case 2:
+   case 2:
+     memcpy ( ch1, ch, 16 );
+     memcpy ( ch2, &ch[16], 16 );
+     memcpy ( ch3, &ch[32], 16 );
+     ch1[17] = '\0';
+     ch2[17] = '\0';
+     ch3[17] = '\0';
      SeeedOled.setTextXY(x_position,y_position);          //Set the cursor to Xth Page, Yth Column
      SeeedOled.putString(ch1); //Print the String
-     //SeeedOled.setTextXY(x_position+1,y_position);          //Set the cursor to Xth Page, Yth Column
-     //SeeedOled.putString(ch2); //Print the String
-     //SeeedOled.setTextXY(x_position+2,y_position);          //Set the cursor to Xth Page, Yth Column
-     //SeeedOled.putString(ch3); //Print the String
+     SeeedOled.setTextXY(x_position+1,y_position);          //Set the cursor to Xth Page, Yth Column
+     SeeedOled.putString(ch2); //Print the String
+     SeeedOled.setTextXY(x_position+2,y_position);          //Set the cursor to Xth Page, Yth Column
+     SeeedOled.putString(ch3); //Print the String
      break;
     case 3:
+     memcpy ( ch1, ch, 16 );
+     memcpy ( ch2, &ch[16], 16 );
+     memcpy ( ch3, &ch[32], 16 );
+     memcpy ( ch4, &ch[48], 16 );
+     ch1[17] = '\0';
+     ch2[17] = '\0';
+     ch3[17] = '\0';
+     ch4[17] = '\0';
      SeeedOled.setTextXY(x_position,y_position);          //Set the cursor to Xth Page, Yth Column
      SeeedOled.putString(ch1); //Print the String
-     //SeeedOled.setTextXY(x_position+1,y_position);          //Set the cursor to Xth Page, Yth Column
-     //SeeedOled.putString(ch2); //Print the String
-     //SeeedOled.setTextXY(x_position+2,y_position);          //Set the cursor to Xth Page, Yth Column
-     //SeeedOled.putString(ch3); //Print the String
-     //SeeedOled.setTextXY(x_position+3,y_position);          //Set the cursor to Xth Page, Yth Column
-     //SeeedOled.putString(ch4); //Print the String
+     SeeedOled.setTextXY(x_position+1,y_position);          //Set the cursor to Xth Page, Yth Column
+     SeeedOled.putString(ch2); //Print the String
+     SeeedOled.setTextXY(x_position+2,y_position);          //Set the cursor to Xth Page, Yth Column
+     SeeedOled.putString(ch3); //Print the String
+     SeeedOled.setTextXY(x_position+3,y_position);          //Set the cursor to Xth Page, Yth Column
+     SeeedOled.putString(ch4); //Print the String
      break;
    }
-*/
 }
 
 //------------------------------------------------
 //MAIN LOOP
 //------------------------------------------------
 
-
-u32 cmd;
-unsigned long previous_millis_mainloop;
 void loop() {
   while( MAILBOX_CMD_ADDR==0 
-         || (millis() - previous_millis_mainloop) < 250
-         || buflen
+      //   || (millis() - previous_millis_mainloop) < 250
+      //   || buflen
   ); // Wait until any of the conditions satisfied
 
   if(MAILBOX_CMD_ADDR!=0){
-    cmd = MAILBOX_CMD_ADDR;
+      u32 cmd = MAILBOX_CMD_ADDR;
       if (cmd==PRINT_STRING){
-        //analyze_command();
-  
         SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
         SeeedOled.putString("gcode"); //Print the String
-        MAILBOX_CMD_ADDR = 0x0;
-      } else {
-        //Send back ACK
-        SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
-        SeeedOled.putString("other"); //Print the String
-        MAILBOX_CMD_ADDR = 0x0;
-      }
+        analyze_command();
+      } 
+      MAILBOX_CMD_ADDR = 0x0;
    }
+
   
+/*
   	if (buflen) {
   #ifdef SDSUPPORT
   		if(savetosd)
@@ -1146,16 +1176,18 @@ void loop() {
   		if (bufindr == BUFSIZE)
   			bufindr = 0;
   	}
+*/
   
+  /* 
     if(millis()-previous_millis_mainloop>250)
       previous_millis_mainloop = millis();
   	//check heater every n milliseconds
-  	//manage_heater();
   	manage_heater(SysMonInstPtr);
   	manage_inactivity(1);
   #if (MINIMUM_FAN_START_SPEED > 0)
   	manage_fan_start_speed();
   #endif
+  */
   /* End of Main Sprinter Loop */
 }
 

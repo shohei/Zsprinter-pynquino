@@ -1,2 +1,2 @@
    text	   data	    bss	    dec	    hex	filename
- 213584	   3852	   3932	 221368	  360b8	arduino_zsprinter.elf
+ 202456	   3912	   3920	 210288	  33570	arduino_zsprinter.elf

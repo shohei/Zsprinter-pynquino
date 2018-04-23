@@ -167,3 +167,4 @@ u32 millis();
 void print_string();
 void analyze_command();
 void get_command_mailbox(char serial_char);
+void initializeOLED();
