@@ -165,6 +165,8 @@ void initializeXADC();
 u32 millis();
 
 void print_string();
-void analyze_command();
-void get_command_mailbox(char serial_char);
+//void parse_command(char serial_char);
+void parse_command(char serial_char, int idx);
+void get_command_mailbox();
 void initializeOLED();
+void mydelay(int factor);

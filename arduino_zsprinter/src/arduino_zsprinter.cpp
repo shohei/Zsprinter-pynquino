@@ -156,7 +156,7 @@
 #include "heater.h"
 
 #include <stdio.h>
-#include "xil_printf.h"
+//#include "xil_printf.h"
 #include <stdint.h>
 #include "xil_types.h"
 #include "xtmrctr.h"
@@ -179,6 +179,7 @@
 
 #define CLEAR_DISPLAY       0x1
 #define PRINT_STRING        0x3
+
 
 //XGpio LEDInst;
 //XGpio BTNInst;
@@ -215,6 +216,7 @@ static int intr_cntr;
 static int pulse_status = 0;
 static XTmrCtr TimerInstancePtr;
 static XTmrCtr TimerInstancePtr2;
+static XTmrCtr TimerInstancePtr3;
 
 #define SYSMON_DEVICE_ID XPAR_SYSMON_0_DEVICE_ID //ID of xadc_wiz_0
 #define XSysMon_RawToExtVoltage(AdcData) ((((float)(AdcData))*(1.0f))/65536.0f) //(ADC 16bit result)/16/4096 = (ADC 16bit result)/65536
@@ -803,9 +805,12 @@ void initializeOLED(){
   SeeedOled.setPageMode();           //Set addressing mode to Page Mode
   SeeedOled.setTextXY(0,0);          //Set the cursor to Xth Page, Yth Column
   SeeedOled.putString("ZSprinter2"); //Print the String
+  SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
+  char numbuf[16];
+  sprintf(numbuf,"buflen:%d",buflen);
+  SeeedOled.putString(numbuf); //Print the String
 }
 
-unsigned long previous_millis_mainloop;
 //------------------------------------------------
 // Init 
 //------------------------------------------------
@@ -818,13 +823,14 @@ void setup() {
 	showString("\r\n");
 	showString("start\r\n");
 
-  initializeOLED();
-  previous_millis_mainloop = millis();
   MAILBOX_CMD_ADDR = 0x0;
+  initializeOLED();
 
 	initializeGPIO();
 	initializeAxiTimer();
-  return;
+  serial_count = 0;
+  comment_mode = false;
+return;
 
 	for (int i = 0; i < BUFSIZE; i++) {
 		fromsd[i] = false;
@@ -1047,19 +1053,24 @@ void clean_display(int x_position, int y_position){
    SeeedOled.putString("                "); //Print the String
 }
 
-void analyze_command(){
+char current_command[64];
+int current_command_length = 0;
+
+void get_command_mailbox(){
    int x_position, y_position, length;
-   char ch[64];
+   //char ch[64];
    int i;
 
    length=MAILBOX_DATA(0);
    x_position=MAILBOX_DATA(1);
    y_position=MAILBOX_DATA(2);
+   current_command_length = length;
    for(i=0; i<length; i++){
-       ch[i] = MAILBOX_DATA(3+i);
-       get_command_mailbox(ch[i]);
+       //ch[i] = MAILBOX_DATA(3+i);
+       current_command[i] = MAILBOX_DATA(3+i);
    }
-   ch[i]='\0'; // make sure it is null terminated string
+   //ch[i]='\0'; // make sure it is null terminated string
+   current_command[i]='\0'; // make sure it is null terminated string
 
    char ch1[17];
    char ch2[17];
@@ -1067,28 +1078,24 @@ void analyze_command(){
    char ch4[17];
    
    int row_nums = (int) (length / 16);
-   char row_num_char[8];
 
    switch(row_nums){
      clean_display(x_position,y_position);
    case 0:
      SeeedOled.setTextXY(x_position,y_position);          //Set the cursor to Xth Page, Yth Column
-     SeeedOled.putString(ch); //Print the String
+     SeeedOled.putString(current_command); //Print the String
      break;
    case 1:
-     memcpy ( ch1, ch, 16 );
-     memcpy ( ch2, &ch[16], 16 );
+     memcpy ( ch1, current_command, 16 );
+     memcpy ( ch2, &current_command[16], 16 );
      ch1[17] = '\0';
      ch2[17] = '\0';
      SeeedOled.setTextXY(x_position,y_position);          //Set the cursor to Xth Page, Yth Column
      SeeedOled.putString(ch1); //Print the String
      SeeedOled.setTextXY(x_position+1,y_position);          //Set the cursor to Xth Page, Yth Column
      SeeedOled.putString(ch2); //Print the String
-     break;
-   case 2:
-     memcpy ( ch1, ch, 16 );
-     memcpy ( ch2, &ch[16], 16 );
-     memcpy ( ch3, &ch[32], 16 );
+     break; case 2: memcpy ( ch1, current_command, 16 ); memcpy ( ch2, &current_command[16], 16 );
+     memcpy ( ch3, &current_command[32], 16 );
      ch1[17] = '\0';
      ch2[17] = '\0';
      ch3[17] = '\0';
@@ -1100,10 +1107,10 @@ void analyze_command(){
      SeeedOled.putString(ch3); //Print the String
      break;
     case 3:
-     memcpy ( ch1, ch, 16 );
-     memcpy ( ch2, &ch[16], 16 );
-     memcpy ( ch3, &ch[32], 16 );
-     memcpy ( ch4, &ch[48], 16 );
+     memcpy ( ch1, current_command, 16 );
+     memcpy ( ch2, &current_command[16], 16 );
+     memcpy ( ch3, &current_command[32], 16 );
+     memcpy ( ch4, &current_command[48], 16 );
      ch1[17] = '\0';
      ch2[17] = '\0';
      ch3[17] = '\0';
@@ -1124,71 +1131,50 @@ void analyze_command(){
 //MAIN LOOP
 //------------------------------------------------
 
+void mydelay(int factor){
+  for(int i=0;i<factor*1000;i++){
+    for(int j=0;j<factor*1000;j++){
+			asm volatile("nop");
+    }
+  }
+}
+
 void loop() {
-  while( MAILBOX_CMD_ADDR==0 
-      //   || (millis() - previous_millis_mainloop) < 250
-      //   || buflen
-  ); // Wait until any of the conditions satisfied
+  while( MAILBOX_CMD_ADDR==0 ); // Wait until any of the conditions satisfied
 
   if(MAILBOX_CMD_ADDR!=0){
       u32 cmd = MAILBOX_CMD_ADDR;
       if (cmd==PRINT_STRING){
+        char numbuf[16];
+        get_command_mailbox();
         SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
-        SeeedOled.putString("gcode"); //Print the String
-        analyze_command();
-      } 
+        SeeedOled.putString("                "); //Print the String
+        sprintf(numbuf,"clen:%d",current_command_length);
+        mydelay(1);
+        SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
+        SeeedOled.putString(numbuf); //Print the String
+
+        for(int i=0;i<current_command_length;i++){
+          mydelay(1);
+          parse_command(current_command[i],i);
+          mydelay(1);
+        }
+
+        mydelay(1);
+        SeeedOled.setTextXY(3,0);          //Set the cursor to Xth Page, Yth Column
+        sprintf(numbuf,"buflen:%d",buflen);
+        SeeedOled.putString(numbuf); //Print the String
+        mydelay(1);
+        SeeedOled.setTextXY(4,0);          //Set the cursor to Xth Page, Yth Column
+        sprintf(numbuf,"bufindw:%d",bufindw);
+        SeeedOled.putString(numbuf); //Print the String
+        mydelay(1);
+        SeeedOled.setTextXY(5,0);          //Set the cursor to Xth Page, Yth Column
+        sprintf(numbuf,"bufindr:%d",bufindr);
+        SeeedOled.putString(numbuf); //Print the String
+      }
       MAILBOX_CMD_ADDR = 0x0;
    }
-
-  
-/*
-  	if (buflen) {
-  #ifdef SDSUPPORT
-  		if(savetosd)
-  		{
-  			if(strstr(cmdbuffer[bufindr],"M29") == NULL)
-  			{
-  				write_command(cmdbuffer[bufindr]);
-  				printf("ok\r\n");
-  				//            //showString(PSTR("ok\r\n"));
-  			}
-  			else
-  			{
-  				file.sync();
-  				file.close();
-  				savetosd = false;
-  				printf("Done saving file.\r\n");
-  				//            //showString(PSTR("Done saving file.\r\n"));
-  			}
-  		}
-  		else
-  		{
-  			process_commands();
-  		}
-  #else
-  		process_commands();
-  #endif
-  
-  		buflen = (buflen - 1);
-  		//bufindr = (bufindr + 1)%BUFSIZE;
-  		//Removed modulo (%) operator, which uses an expensive divide and multiplication
-  		bufindr++;
-  		if (bufindr == BUFSIZE)
-  			bufindr = 0;
-  	}
-*/
-  
-  /* 
-    if(millis()-previous_millis_mainloop>250)
-      previous_millis_mainloop = millis();
-  	//check heater every n milliseconds
-  	manage_heater(SysMonInstPtr);
-  	manage_inactivity(1);
-  #if (MINIMUM_FAN_START_SPEED > 0)
-  	manage_fan_start_speed();
-  #endif
-  */
-  /* End of Main Sprinter Loop */
 }
 
 //------------------------------------------------
@@ -1197,13 +1183,15 @@ void loop() {
 
 void check_buffer_while_arc() {
 	if (buflen < (BUFSIZE - 1)) {
-		get_command();
+		//get_command();
+		get_command_mailbox();
 	}
 }
 
 //------------------------------------------------
 //READ COMMAND FROM UART
 //------------------------------------------------
+/*
 void get_command() {
 	serial_char = getchar();
 	printf("%c",serial_char);
@@ -1313,14 +1301,15 @@ void get_command() {
 			cmdbuffer[bufindw][serial_count++] = serial_char;
 	}
 }
+*/
 
-void get_command_mailbox(char serial_char) {
-	//serial_char = getchar();
-	//printf("%c",serial_char);
+
+void parse_command(char serial_char, int idx) {
 
 	if (serial_char == '\n' || serial_char == '\r'
 			|| (serial_char == ':' && comment_mode == false)
 			|| serial_count >= (MAX_CMD_SIZE - 1)) {
+
 		if (!serial_count) { //if empty line
 			comment_mode = false; // for new command
 			return;
@@ -1409,6 +1398,7 @@ void get_command_mailbox(char serial_char) {
 		}
 		//Removed modulo (%) operator, which uses an expensive divide and multiplication
 		//bufindw = (bufindw + 1)%BUFSIZE;
+
 		bufindw++;
 		if (bufindw == BUFSIZE)
 			bufindw = 0;
@@ -1417,11 +1407,13 @@ void get_command_mailbox(char serial_char) {
 		comment_mode = false; //for new command
 		serial_count = 0; //clear buffer
 	} else {
-		if (serial_char == ';')
+		if (serial_char == ';'){
 			comment_mode = true;
-		if (!comment_mode)
+    }
+		if (!comment_mode){
 			cmdbuffer[bufindw][serial_count++] = serial_char;
-	}
+    }
+  }
 }
 
 static bool check_endstops = true;
@@ -1655,7 +1647,13 @@ FORCE_INLINE void process_commands() {
 	unsigned long codenum; //throw away variable
 	char *starpos = NULL;
 
-	printf("recv: %s\r\n",cmdbuffer[bufindr]);
+	//printf("recv: %s\r\n",cmdbuffer[bufindr]);
+
+  char dumpcmd[20];
+  sprintf(dumpcmd,"rcv:%s\r\n",cmdbuffer[bufindr]);
+  SeeedOled.setTextXY(6,0);          //Set the cursor to Xth Page, Yth Column
+  SeeedOled.putString(dumpcmd); //Print the String
+  return;
 
 	if (code_seen('G')) {
 		switch ((int) code_value()) {
@@ -3907,7 +3905,6 @@ FORCE_INLINE void process_commands() {
 	void wait_for_1_8us(){
 		/* NOP inserted:So that high time is 1.8us approximately */
 		for(int i=0;i<5;i++){
-//			asm volatile("mov r0, r0");
 			asm volatile("nop");
 		}
 	}
@@ -4777,6 +4774,61 @@ else if (e_steps > 0) {
 		}
 	}
 
+	void Timer_InterruptHandler3(void *data, u8 TmrCtrNumber)
+	{
+      //SeeedOled.setTextXY(6,0);          //Set the cursor to Xth Page, Yth Column
+      //char charcounter[10];
+      //sprintf(charcounter,"i:%d",counter);
+      //sprintf(charcounter,"s:%d",serial_count);
+      //SeeedOled.putString(charcounter); //Print the String
+      //counter++;
+
+		//20Hz cycle; this is used as main loop (which is parallel to main) 
+  	if(buflen) {
+  #ifdef SDSUPPORT
+  		if(savetosd)
+  		{
+  			if(strstr(cmdbuffer[bufindr],"M29") == NULL)
+  			{
+  				write_command(cmdbuffer[bufindr]);
+  				printf("ok\r\n");
+  				//            //showString(PSTR("ok\r\n"));
+  			}
+  			else
+  			{
+  				file.sync();
+  				file.close();
+  				savetosd = false;
+  				printf("Done saving file.\r\n");
+  				//            //showString(PSTR("Done saving file.\r\n"));
+  			}
+  		}
+  		else
+  		{
+  			process_commands();
+  		}
+  #else
+  		process_commands();
+  #endif
+  
+  		buflen = (buflen - 1);
+  		bufindr++;
+  		if (bufindr == BUFSIZE)
+  			bufindr = 0;
+  	}
+
+
+// heater is not checked, so comment it out
+/*
+  	//check heater every n milliseconds
+  	manage_heater(SysMonInstPtr);
+  	manage_inactivity(1);
+  #if (MINIMUM_FAN_START_SPEED > 0)
+  	manage_fan_start_speed();
+  #endif
+*/
+}
+
 	void initSteppers(){
 		//no use of enable pin
 		//	_CLR(shields_data , X_EN_PIN);
@@ -4886,6 +4938,32 @@ else if (e_steps > 0) {
 				1, //Channel 1
 				0x0);
 
+		//**************************************************************************//
+		// Timer3 init
+		//**************************************************************************//
+
+		xStatus = XTmrCtr_Initialize(&TimerInstancePtr3,XPAR_TMRCTR_2_DEVICE_ID);
+		if(XST_SUCCESS != xStatus)
+			print("TIMER3 INIT FAILED \n\r");
+
+		XTmrCtr_SetHandler(&TimerInstancePtr3,
+				Timer_InterruptHandler3,
+				&TimerInstancePtr3);
+
+		XTmrCtr_SetResetValue(&TimerInstancePtr3,
+				0, //Channel 0
+				//0x4c4b40); //20Hz 
+        0x5f5e100); //1Hz -> for debug
+        //0x1312d00);//5Hz
+
+		XTmrCtr_SetOptions(&TimerInstancePtr3,
+				0, //Channel 0
+				(XTC_INT_MODE_OPTION | XTC_AUTO_RELOAD_OPTION | XTC_DOWN_COUNT_OPTION));//Timer3 is DOWN counter
+
+		//**************************************************************************//
+		// Connect INTC and Timers 
+		//**************************************************************************//
+
 		xStatus = XIntc_Initialize(&IntcInstancePtr, XPAR_INTC_0_DEVICE_ID);
 		if (xStatus != XST_SUCCESS){
 			print("intc init error\n\r");
@@ -4903,12 +4981,19 @@ else if (e_steps > 0) {
 		if (xStatus != XST_SUCCESS){
 			print("connect timer1 error\n\r");
 		}
+		xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_2_VEC_ID,
+				(XInterruptHandler)XTmrCtr_InterruptHandler,
+				(void*)&TimerInstancePtr3);
+		if (xStatus != XST_SUCCESS){
+			print("connect timer3 error\n\r");
+		}
 		xStatus = XIntc_Start(&IntcInstancePtr, XIN_REAL_MODE);
 		if (xStatus != XST_SUCCESS){
 			print("intc start error\n\r");
 		}
 		XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_0_VEC_ID);
 		XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_1_VEC_ID);
+		XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_2_VEC_ID);
 		microblaze_enable_interrupts();
 
 		XTmrCtr_Start(&TimerInstancePtr,0);
@@ -4917,6 +5002,8 @@ else if (e_steps > 0) {
 		print("AXI timer2 - timer0 start \n\r");
 		XTmrCtr_Start(&TimerInstancePtr2,1);
 		print("AXI timer2 - timer1 start \n\r");
+		XTmrCtr_Start(&TimerInstancePtr3,0);
+		print("AXI timer3 start \n\r");
 
 	}
 
@@ -5030,7 +5117,6 @@ else if (e_steps > 0) {
 		//Serial.println("}");
 	}
 
-	void log_uint_array(char* message, unsigned int value[], int array_lenght) {
 		//Serial.print("DEBUG"); Serial.print(message); Serial.print(": {");
 		for(int i=0; i < array_lenght; i++) {
 			//Serial.print(value[i]);
