@@ -842,7 +842,6 @@ void setup() {
 
 	initializeGPIO();
 	initializeAxiTimer();
-return;
 
 	for (int i = 0; i < BUFSIZE; i++) {
 		fromsd[i] = false;
@@ -1047,11 +1046,14 @@ return;
 	printf("/");
 	printf("%d\r\n",BLOCK_BUFFER_SIZE);
 
-	for (int8_t i = 0; i < NUM_AXIS; i++) {
-		axis_steps_per_sqr_second[i] = max_acceleration_units_per_sq_second[i]
-																			* axis_steps_per_unit[i];
-	}
-
+	//for (int8_t i = 0; i < NUM_AXIS; i++) {
+	//     axis_steps_per_sqr_second[i] = max_acceleration_units_per_sq_second[i]
+	//											* axis_steps_per_unit[i];
+	//}
+	axis_steps_per_sqr_second[0] = 800000;
+	axis_steps_per_sqr_second[1] = 800000;
+	axis_steps_per_sqr_second[2] = 800000;
+	axis_steps_per_sqr_second[3] = 800000;
 }
 
 void clean_display(int x_position, int y_position){
