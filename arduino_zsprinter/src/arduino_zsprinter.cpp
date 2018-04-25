@@ -1041,10 +1041,10 @@ void setup() {
 	//Serial.println(FreeRam1());
 
 	//Planner Buffer Size
-	printf("Plan Buffer Size: ");
-	printf("%d",(int)sizeof(block_t)*BLOCK_BUFFER_SIZE);
-	printf("/");
-	printf("%d\r\n",BLOCK_BUFFER_SIZE);
+	//printf("Plan Buffer Size: ");
+	//printf("%d",(int)sizeof(block_t)*BLOCK_BUFFER_SIZE);
+	//printf("/");
+	//printf("%d\r\n",BLOCK_BUFFER_SIZE);
 
 	//for (int8_t i = 0; i < NUM_AXIS; i++) {
 	//     axis_steps_per_sqr_second[i] = max_acceleration_units_per_sq_second[i]
