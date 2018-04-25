@@ -463,7 +463,8 @@ unsigned long previous_millis_fan_start = 0;
 // BUFSIZE is reduced from 8 to 6 to free more RAM for the PLANNER
 #define MAX_CMD_SIZE 96
 #define BUFSIZE 6 //8
-char cmdbuffer[BUFSIZE][MAX_CMD_SIZE];
+static char cmdbuffer[BUFSIZE][MAX_CMD_SIZE] = {};
+static char cmdbuffer_dummy[BUFSIZE][MAX_CMD_SIZE] = {};
 bool fromsd[BUFSIZE];
 
 //Need 1kb Ram --> only work with Atmega1284
@@ -473,12 +474,13 @@ int lastxferchar;
 long xferbytes;
 #endif
 
-unsigned char bufindr = 0;
-unsigned char bufindw = 0;
-unsigned char buflen = 0;
+static unsigned char bufindr = 0;
+static unsigned char bufindw = 0;
+static unsigned char buflen = 0;
 char serial_char;
-int serial_count = 0;
-boolean comment_mode = false;
+static int serial_count = 0;
+//boolean comment_mode = false;
+static boolean comment_mode = false;
 char *strchr_pointer; // just a pointer to find chars in the cmd string like X, Y, Z, E, etc
 
 //Send Temperature in ｰC to Host
@@ -805,15 +807,26 @@ void initializeOLED(){
   SeeedOled.setPageMode();           //Set addressing mode to Page Mode
   SeeedOled.setTextXY(0,0);          //Set the cursor to Xth Page, Yth Column
   SeeedOled.putString("ZSprinter2"); //Print the String
-  SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
-  char numbuf[16];
-  sprintf(numbuf,"buflen:%d",buflen);
-  SeeedOled.putString(numbuf); //Print the String
+  mydelay(1);
+  char num[8];
+  if(comment_mode){
+    SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
+    SeeedOled.putString("t"); //Print the String
+  }  else {
+    SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
+    SeeedOled.putString("f"); //Print the String
+  }
+  mydelay(1);
+  sprintf(num,"s%d",serial_count);
+  SeeedOled.setTextXY(2,0);          //Set the cursor to Xth Page, Yth Column
+  SeeedOled.putString(num); //Print the String
+  mydelay(1);
 }
 
 //------------------------------------------------
 // Init 
 //------------------------------------------------
+
 void setup() {
 	setvbuf(stdin, NULL, _IONBF, 0);
 	print("Sprinter started.\r\n");
@@ -824,12 +837,11 @@ void setup() {
 	showString("start\r\n");
 
   MAILBOX_CMD_ADDR = 0x0;
+  //comment_mode = false;
   initializeOLED();
 
 	initializeGPIO();
 	initializeAxiTimer();
-  serial_count = 0;
-  comment_mode = false;
 return;
 
 	for (int i = 0; i < BUFSIZE; i++) {
@@ -1072,6 +1084,7 @@ void get_command_mailbox(){
    //ch[i]='\0'; // make sure it is null terminated string
    current_command[i]='\0'; // make sure it is null terminated string
 
+return;
    char ch1[17];
    char ch2[17];
    char ch3[17];
@@ -1132,9 +1145,9 @@ void get_command_mailbox(){
 //------------------------------------------------
 
 void mydelay(int factor){
-  for(int i=0;i<factor*1000;i++){
-    for(int j=0;j<factor*1000;j++){
-			asm volatile("nop");
+  for(int j=0;j<factor;j++){
+    for(int i=0;i<1000;i++){
+      asm volatile("nop");
     }
   }
 }
@@ -1145,14 +1158,10 @@ void loop() {
   if(MAILBOX_CMD_ADDR!=0){
       u32 cmd = MAILBOX_CMD_ADDR;
       if (cmd==PRINT_STRING){
-        char numbuf[16];
         get_command_mailbox();
-        SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
-        SeeedOled.putString("                "); //Print the String
-        sprintf(numbuf,"clen:%d",current_command_length);
-        mydelay(1);
-        SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
-        SeeedOled.putString(numbuf); //Print the String
+
+        SeeedOled.setTextXY(4,0);          //Set the cursor to Xth Page, Yth Column
+        SeeedOled.putString(current_command); //Print the String
 
         for(int i=0;i<current_command_length;i++){
           mydelay(1);
@@ -1160,18 +1169,8 @@ void loop() {
           mydelay(1);
         }
 
-        mydelay(1);
-        SeeedOled.setTextXY(3,0);          //Set the cursor to Xth Page, Yth Column
-        sprintf(numbuf,"buflen:%d",buflen);
-        SeeedOled.putString(numbuf); //Print the String
-        mydelay(1);
-        SeeedOled.setTextXY(4,0);          //Set the cursor to Xth Page, Yth Column
-        sprintf(numbuf,"bufindw:%d",bufindw);
-        SeeedOled.putString(numbuf); //Print the String
-        mydelay(1);
         SeeedOled.setTextXY(5,0);          //Set the cursor to Xth Page, Yth Column
-        sprintf(numbuf,"bufindr:%d",bufindr);
-        SeeedOled.putString(numbuf); //Print the String
+        SeeedOled.putString(cmdbuffer[bufindr]); //Print the String
       }
       MAILBOX_CMD_ADDR = 0x0;
    }
@@ -1649,11 +1648,7 @@ FORCE_INLINE void process_commands() {
 
 	//printf("recv: %s\r\n",cmdbuffer[bufindr]);
 
-  char dumpcmd[20];
-  sprintf(dumpcmd,"rcv:%s\r\n",cmdbuffer[bufindr]);
-  SeeedOled.setTextXY(6,0);          //Set the cursor to Xth Page, Yth Column
-  SeeedOled.putString(dumpcmd); //Print the String
-  return;
+return;
 
 	if (code_seen('G')) {
 		switch ((int) code_value()) {
@@ -4776,13 +4771,6 @@ else if (e_steps > 0) {
 
 	void Timer_InterruptHandler3(void *data, u8 TmrCtrNumber)
 	{
-      //SeeedOled.setTextXY(6,0);          //Set the cursor to Xth Page, Yth Column
-      //char charcounter[10];
-      //sprintf(charcounter,"i:%d",counter);
-      //sprintf(charcounter,"s:%d",serial_count);
-      //SeeedOled.putString(charcounter); //Print the String
-      //counter++;
-
 		//20Hz cycle; this is used as main loop (which is parallel to main) 
   	if(buflen) {
   #ifdef SDSUPPORT
@@ -4952,8 +4940,8 @@ else if (e_steps > 0) {
 
 		XTmrCtr_SetResetValue(&TimerInstancePtr3,
 				0, //Channel 0
-				//0x4c4b40); //20Hz 
-        0x5f5e100); //1Hz -> for debug
+				0x4c4b40); //20Hz 
+        //0x5f5e100); //1Hz -> for debug
         //0x1312d00);//5Hz
 
 		XTmrCtr_SetOptions(&TimerInstancePtr3,
