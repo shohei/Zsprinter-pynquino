@@ -1016,10 +1016,10 @@ return;
 
 #endif
 
-#if defined(PID_SOFT_PWM) || (defined(FAN_SOFT_PWM) && (FAN_PIN > -1))
-	printf("Soft PWM Init\r\n");
-	init_Timer2_softpwm();
-#endif
+//#if defined(PID_SOFT_PWM) || (defined(FAN_SOFT_PWM) && (FAN_PIN > -1))
+//	printf("Soft PWM Init\r\n");
+//	init_Timer2_softpwm();
+//#endif
 
 	printf("Planner Init\r\n");
 	plan_init();  // Initialize planner;
