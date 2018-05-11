@@ -180,6 +180,7 @@
 #define CLEAR_DISPLAY       0x1
 #define PRINT_STRING        0x3
 
+
 //XGpio LEDInst;
 //XGpio BTNInst;
 XGpio ShieldInst;
@@ -333,7 +334,8 @@ void __cxa_pure_virtual() {
 
 //Stepper Movement Variables
 char axis_codes[NUM_AXIS] = { 'X', 'Y', 'Z', 'E' };
-float axis_steps_per_unit[4] = _AXIS_STEP_PER_UNIT;
+//float axis_steps_per_unit[4] = _AXIS_STEP_PER_UNIT;
+static float axis_steps_per_unit[4] = _AXIS_STEP_PER_UNIT;
 
 const float homing_feedrate_mm_m[] = {HOMING_FEEDRATE_Z, HOMING_FEEDRATE_Z,HOMING_FEEDRATE_Z, 0};
 static float feedrate_mm_m = 1500.0, saved_feedrate_mm_m;
@@ -354,6 +356,8 @@ unsigned int PID_Kp = PID_PGAIN,
 
 long max_acceleration_units_per_sq_second[4] =
 		_MAX_ACCELERATION_UNITS_PER_SQ_SECOND; // X, Y, Z and E max acceleration in mm/s^2 for printing moves or retracts
+//static long max_acceleration_units_per_sq_second[4] =
+//		_MAX_ACCELERATION_UNITS_PER_SQ_SECOND; // X, Y, Z and E max acceleration in mm/s^2 for printing moves or retracts
 
 //float max_start_speed_units_per_second[] = _MAX_START_SPEED_UNITS_PER_SECOND;
 //long  max_travel_acceleration_units_per_sq_second[] = _MAX_TRAVEL_ACCELERATION_UNITS_PER_SQ_SECOND; // X, Y, Z max acceleration in mm/s^2 for travel moves
@@ -362,6 +366,7 @@ float mintravelfeedrate = DEFAULT_MINTRAVELFEEDRATE;
 float minimumfeedrate = DEFAULT_MINIMUMFEEDRATE;
 
 unsigned long axis_steps_per_sqr_second[NUM_AXIS];
+//static unsigned long axis_steps_per_sqr_second[NUM_AXIS];
 unsigned long plateau_steps;
 
 //unsigned long axis_max_interval[NUM_AXIS];
@@ -377,8 +382,8 @@ volatile int extrudemultiply=100;//100->1 200->2
 
 //boolean acceleration_enabled = false, accelerating = false;
 //unsigned long interval;
-static float destination[NUM_AXIS] = {0.0, 0.0, 0.0, 0.0};
-static float current_position[NUM_AXIS] = {0.0, 0.0, 0.0, 0.0};
+float destination[NUM_AXIS] = {0.0, 0.0, 0.0, 0.0};
+float current_position[NUM_AXIS] = {0.0, 0.0, 0.0, 0.0};
 float add_homing[3]= {0,0,0};
 
 static unsigned short virtual_steps_x = 0;
@@ -430,7 +435,7 @@ float delta[3];
 //bool relative_mode_e = false;  //Determines Absolute or Relative E Codes while in Absolute Coordinates mode. E is always relative in Relative Coordinates mode.
 //long timediff = 0;
 
-static bool is_homing = false;
+bool is_homing = false;
 
 //experimental feedrate calc
 //float d = 0;
@@ -473,16 +478,17 @@ int lastxferchar;
 long xferbytes;
 #endif
 
+static char current_command[64];
+static int current_command_length = 0;
+
 static unsigned char bufindr = 0;
 static unsigned char bufindw = 0;
 static unsigned char buflen = 0;
-volatile char serial_char;
+char serial_char;
 static int serial_count = 0;
-// volatile boolean comment_mode = false;
-// boolean comment_mode;
-static volatile boolean comment_mode = false;
-static boolean max_software_endstops = true;
-static char *strchr_pointer; // just a pointer to find chars in the cmd string like X, Y, Z, E, etc
+//boolean comment_mode = false;
+static boolean comment_mode = false;
+char *strchr_pointer; // just a pointer to find chars in the cmd string like X, Y, Z, E, etc
 
 //Send Temperature in ｰC to Host
 int hotendtC = 0, bedtempC = 0;
@@ -808,18 +814,24 @@ void initializeOLED(){
   SeeedOled.setPageMode();           //Set addressing mode to Page Mode
   SeeedOled.setTextXY(0,0);          //Set the cursor to Xth Page, Yth Column
   SeeedOled.putString("ZSprinter2"); //Print the String
-  mydelay(1);
-  char num[8];
-  max_software_endstops=true;
-  is_homing=false;
-  comment_mode = false;
-  // if(!comment_mode){
-  //   SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
-  //   SeeedOled.putString("f"); //Print the String
-  // } else {
-  //   SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
-  //   SeeedOled.putString("t"); //Print the String
-  // }
+  char numchar[8];
+  if(comment_mode){
+    if(serial_count==0){
+      SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
+      SeeedOled.putString("t0"); //Print the String
+    } else {
+      SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
+      SeeedOled.putString("t?"); //Print the String
+    }
+  } else {
+    if(serial_count==0){
+      SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
+      SeeedOled.putString("f0"); //Print the String
+    } else {
+      SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
+      SeeedOled.putString("f?"); //Print the String
+    }
+  }
 }
 
 //------------------------------------------------
@@ -835,17 +847,21 @@ void setup() {
 	showString("\r\n");
 	showString("start\r\n");
 
-    MAILBOX_CMD_ADDR = 0x0;
-    initializeOLED();
+  MAILBOX_CMD_ADDR = 0x0;
+  comment_mode = false;
+  serial_count = 0;
+  current_command_length = 0;
+  initializeOLED();
 
 	initializeGPIO();
 	initializeAxiTimer();
 
+
+	initializeXADC();
+
 	for (int i = 0; i < BUFSIZE; i++) {
 		fromsd[i] = false;
 	}
-
-	initializeXADC();
 
 	//Initialize Dir Pins
 #if X_DIR_PIN > -1
@@ -1013,9 +1029,10 @@ void setup() {
 
 #endif
 
+
 //#if defined(PID_SOFT_PWM) || (defined(FAN_SOFT_PWM) && (FAN_PIN > -1))
-//	printf("Soft PWM Init\r\n");
-//	init_Timer2_softpwm();
+	//printf("Soft PWM Init\r\n");
+	//init_Timer2_softpwm();
 //#endif
 
 	printf("Planner Init\r\n");
@@ -1038,20 +1055,24 @@ void setup() {
 	// showString("Free Ram: ");
 	//Serial.println(FreeRam1());
 
-	//Planner Buffer Size
-	//printf("Plan Buffer Size: ");
-	//printf("%d",(int)sizeof(block_t)*BLOCK_BUFFER_SIZE);
-	//printf("/");
-	//printf("%d\r\n",BLOCK_BUFFER_SIZE);
 
-	//for (int8_t i = 0; i < NUM_AXIS; i++) {
-	//     axis_steps_per_sqr_second[i] = max_acceleration_units_per_sq_second[i]
-	//											* axis_steps_per_unit[i];
-	//}
-	axis_steps_per_sqr_second[0] = 800000;
-	axis_steps_per_sqr_second[1] = 800000;
-	axis_steps_per_sqr_second[2] = 800000;
-	axis_steps_per_sqr_second[3] = 800000;
+	//Planner Buffer Size
+	printf("Plan Buffer Size: ");
+	printf("%d",(int)sizeof(block_t)*BLOCK_BUFFER_SIZE);
+	printf("/");
+	printf("%d\r\n",BLOCK_BUFFER_SIZE);
+
+	for (int8_t i = 0; i < NUM_AXIS; i++) {
+		axis_steps_per_sqr_second[i] = max_acceleration_units_per_sq_second[i]
+																			* axis_steps_per_unit[i];
+	}
+
+  mydelay(1);
+  char num[8];
+  sprintf(num,"a%d",(int)axis_steps_per_sqr_second[0]);
+  SeeedOled.setTextXY(2,0);          //Set the cursor to Xth Page, Yth Column
+  SeeedOled.putString(num); //Print the String
+  mydelay(1);
 }
 
 void clean_display(int x_position, int y_position){
@@ -1065,8 +1086,6 @@ void clean_display(int x_position, int y_position){
    SeeedOled.putString("                "); //Print the String
 }
 
-static char current_command[64] = {};
-static int current_command_length = 0;
 
 void get_command_mailbox(){
    int x_position, y_position, length;
@@ -1082,7 +1101,61 @@ void get_command_mailbox(){
        current_command[i] = MAILBOX_DATA(3+i);
    }
    //ch[i]='\0'; // make sure it is null terminated string
-   current_command[i+1]='\0'; // make sure it is null terminated string
+   current_command[i]='\0'; // make sure it is null terminated string
+
+   //char ch1[17];
+   //char ch2[17];
+   //char ch3[17];
+   //char ch4[17];
+   //
+   //int row_nums = (int) (length / 16);
+
+   //switch(row_nums){
+   //  clean_display(x_position,y_position);
+   //case 0:
+   //  SeeedOled.setTextXY(x_position,y_position);          //Set the cursor to Xth Page, Yth Column
+   //  SeeedOled.putString(current_command); //Print the String
+   //  break;
+   //case 1:
+   //  memcpy ( ch1, current_command, 16 );
+   //  memcpy ( ch2, &current_command[16], 16 );
+   //  ch1[17] = '\0';
+   //  ch2[17] = '\0';
+   //  SeeedOled.setTextXY(x_position,y_position);          //Set the cursor to Xth Page, Yth Column
+   //  SeeedOled.putString(ch1); //Print the String
+   //  SeeedOled.setTextXY(x_position+1,y_position);          //Set the cursor to Xth Page, Yth Column
+   //  SeeedOled.putString(ch2); //Print the String
+   //  break; case 2: memcpy ( ch1, current_command, 16 ); memcpy ( ch2, &current_command[16], 16 );
+   //  memcpy ( ch3, &current_command[32], 16 );
+   //  ch1[17] = '\0';
+   //  ch2[17] = '\0';
+   //  ch3[17] = '\0';
+   //  SeeedOled.setTextXY(x_position,y_position);          //Set the cursor to Xth Page, Yth Column
+   //  SeeedOled.putString(ch1); //Print the String
+   //  SeeedOled.setTextXY(x_position+1,y_position);          //Set the cursor to Xth Page, Yth Column
+   //  SeeedOled.putString(ch2); //Print the String
+   //  SeeedOled.setTextXY(x_position+2,y_position);          //Set the cursor to Xth Page, Yth Column
+   //  SeeedOled.putString(ch3); //Print the String
+   //  break;
+   // case 3:
+   //  memcpy ( ch1, current_command, 16 );
+   //  memcpy ( ch2, &current_command[16], 16 );
+   //  memcpy ( ch3, &current_command[32], 16 );
+   //  memcpy ( ch4, &current_command[48], 16 );
+   //  ch1[17] = '\0';
+   //  ch2[17] = '\0';
+   //  ch3[17] = '\0';
+   //  ch4[17] = '\0';
+   //  SeeedOled.setTextXY(x_position,y_position);          //Set the cursor to Xth Page, Yth Column
+   //  SeeedOled.putString(ch1); //Print the String
+   //  SeeedOled.setTextXY(x_position+1,y_position);          //Set the cursor to Xth Page, Yth Column
+   //  SeeedOled.putString(ch2); //Print the String
+   //  SeeedOled.setTextXY(x_position+2,y_position);          //Set the cursor to Xth Page, Yth Column
+   //  SeeedOled.putString(ch3); //Print the String
+   //  SeeedOled.setTextXY(x_position+3,y_position);          //Set the cursor to Xth Page, Yth Column
+   //  SeeedOled.putString(ch4); //Print the String
+   //  break;
+   //}
 }
 
 //------------------------------------------------
@@ -1102,19 +1175,25 @@ void loop() {
 
   if(MAILBOX_CMD_ADDR!=0){
       u32 cmd = MAILBOX_CMD_ADDR;
-      if (cmd==PRINT_STRING) {
+      if (cmd==PRINT_STRING){
         get_command_mailbox();
 
         SeeedOled.setTextXY(4,0);          //Set the cursor to Xth Page, Yth Column
         SeeedOled.putString(current_command); //Print the String
-        comment_mode = false; //this is required!!
 
         for(int i=0;i<current_command_length;i++){
+          mydelay(1);
           parse_command(current_command[i],i);
+          mydelay(1);
         }
 
-        SeeedOled.setTextXY(7,0);          //Set the cursor to Xth Page, Yth Column
-        SeeedOled.putString(cmdbuffer[bufindr]); //Print the String
+        for(int i=0;i<current_command_length;i++){
+          if(current_command[i]!=cmdbuffer[bufindr][i]){
+             SeeedOled.setTextXY(5,0);          //Set the cursor to Xth Page, Yth Column 
+             SeeedOled.putString("NG"); //Print the String
+             break;
+          }
+        } 
       }
       MAILBOX_CMD_ADDR = 0x0;
    }
@@ -1352,13 +1431,10 @@ void parse_command(char serial_char, int idx) {
 	} else {
 		if (serial_char == ';'){
 			comment_mode = true;
-    	}
+    }
 		if (!comment_mode){
 			cmdbuffer[bufindw][serial_count++] = serial_char;
-			//below code is not really necessary, but crashes when removed. Don't know why...
-    		SeeedOled.setTextXY(2,0);          
-    		SeeedOled.putChar('o'); 
-    	} 
+    }
   }
 }
 
@@ -1595,6 +1671,8 @@ FORCE_INLINE void process_commands() {
 
 	//printf("recv: %s\r\n",cmdbuffer[bufindr]);
 
+return;
+
 	if (code_seen('G')) {
 		switch ((int) code_value()) {
 		case 0: // G0 -> G1
@@ -1606,7 +1684,6 @@ FORCE_INLINE void process_commands() {
 #endif
 			get_coordinates(); // For X Y Z E F
 			prepare_move();
-   return;
 			previous_millis_cmd = millis();
 			//ClearToSend();
 			return;
@@ -2592,7 +2669,6 @@ FORCE_INLINE void process_commands() {
 
 	void inverse_kinematics(const float cartesian[3]) {
 
-
 		delta[TOWER_1] = sqrt(delta_diagonal_rod_2_tower_1
 				- sq(delta_tower1_x - cartesian[X_AXIS])
 				- sq(delta_tower1_y - cartesian[Y_AXIS])
@@ -2605,11 +2681,6 @@ FORCE_INLINE void process_commands() {
 				- sq(delta_tower3_x - cartesian[X_AXIS])
 				- sq(delta_tower3_y - cartesian[Y_AXIS])
 		) + cartesian[Z_AXIS];
-
-        // SeeedOled.setTextXY(7,0);          //Set the cursor to Xth Page, Yth Column
-        // SeeedOled.putFloat(cartesian[X_AXIS]); //Print the String
-        // SeeedOled.setTextXY(7,0);          //Set the cursor to Xth Page, Yth Column
-        // SeeedOled.putFloat(delta[X_AXIS]); //Print the String
 
 		//for(int i=0;i<3;i++){
 		//  printf("cartesian[%d]: %f, delta[%d]: %f\r\n",i,cartesian[i],i,delta[i]);
@@ -3117,15 +3188,10 @@ FORCE_INLINE void process_commands() {
 		// Calculate target position in absolute steps
 		//this should be done after the wait, because otherwise a M92 code within the gcode disrupts this calculation somehow
 		long target[4];
-		//target[X_AXIS] = lround(x * axis_steps_per_unit[X_AXIS]);
-		//target[Y_AXIS] = lround(y * axis_steps_per_unit[Y_AXIS]);
-		//target[Z_AXIS] = lround(z * axis_steps_per_unit[Z_AXIS]);
-		//target[E_AXIS] = lround(e * axis_steps_per_unit[E_AXIS]);
-return;
-		target[X_AXIS] = lround(x * 160);
-		target[Y_AXIS] = lround(y * 160);
-		target[Z_AXIS] = lround(z * 160);
-		target[E_AXIS] = lround(e * 182);
+		target[X_AXIS] = lround(x * axis_steps_per_unit[X_AXIS]);
+		target[Y_AXIS] = lround(y * axis_steps_per_unit[Y_AXIS]);
+		target[Z_AXIS] = lround(z * axis_steps_per_unit[Z_AXIS]);
+		target[E_AXIS] = lround(e * axis_steps_per_unit[E_AXIS]);
 
 		// Prepare to set up new block
 		block_t *block = &block_buffer[block_buffer_head];
