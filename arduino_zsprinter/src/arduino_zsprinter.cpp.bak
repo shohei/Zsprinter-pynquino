@@ -497,6 +497,7 @@ static block_t block_buffer[BLOCK_BUFFER_SIZE]; // A ring buffer for motion inst
 static volatile unsigned char block_buffer_head; // Index of the next block to be pushed
 static volatile unsigned char block_buffer_tail; // Index of the block to process now
 // The current position of the tool in absolute steps
+static long target[4] = {0,0,0,0};
 static long position[4] = {0,0,0,0};
 static float previous_speed[4]; // Speed of previous path line segment
 static float previous_nominal_speed; // Nominal speed of previous path line segment
@@ -825,16 +826,16 @@ void initializeOLED(){
   // bufindw = 0;
   // buflen = 0;
   // for(int i=0;i<4;i++){
-  //  position[i] = 0;
+  // 	position[i] = 0;
   // }
   // for(int i=0;i<4;i++){
-  //  target[i] = 0;
+  // 	target[i] = 0;
   // }
   // for(int i=0;i<4;i++){
-  //  destination[i] = 0;
+  // 	destination[i] = 0;
   // }
   // for(int i=0;i<4;i++){
-  //  current_position[i] = 0;
+  // 	current_position[i] = 0;
   // }
   // if(!comment_mode){
   //   SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
@@ -3022,7 +3023,10 @@ FORCE_INLINE void process_commands() {
   void plan_init() {
     block_buffer_head = 0;
     block_buffer_tail = 0;
-    memset(position, 0, sizeof(position)); // clear position
+    // memset(position, 0, sizeof(position)); // clear position
+    for(int i=0;i<4;i++){
+      position[i] = 0; // clear position
+    }
     previous_speed[0] = 0.0;
     previous_speed[1] = 0.0;
     previous_speed[2] = 0.0;
@@ -3106,11 +3110,15 @@ FORCE_INLINE void process_commands() {
     // The target position of the tool in absolute steps
     // Calculate target position in absolute steps
     //this should be done after the wait, because otherwise a M92 code within the gcode disrupts this calculation somehow
-    long target[4];
-    target[X_AXIS] = lround(x * axis_steps_per_unit[X_AXIS]);
-    target[Y_AXIS] = lround(y * axis_steps_per_unit[Y_AXIS]);
-    target[Z_AXIS] = lround(z * axis_steps_per_unit[Z_AXIS]);
-    target[E_AXIS] = lround(e * axis_steps_per_unit[E_AXIS]);
+    // long target[4];
+    //target[X_AXIS] = lround(x * axis_steps_per_unit[X_AXIS]);
+    //target[Y_AXIS] = lround(y * axis_steps_per_unit[Y_AXIS]);
+    //target[Z_AXIS] = lround(z * axis_steps_per_unit[Z_AXIS]);
+    //target[E_AXIS] = lround(e * axis_steps_per_unit[E_AXIS]);
+    target[X_AXIS] = lround(x * 160);
+    target[Y_AXIS] = lround(y * 160);
+    target[Z_AXIS] = lround(z * 160);
+    target[E_AXIS] = lround(e * 182);
 
     // Prepare to set up new block
     block_t *block = &block_buffer[block_buffer_head];
@@ -3127,7 +3135,17 @@ FORCE_INLINE void process_commands() {
     block->steps_e /= 100;
     block->step_event_count = max(block->steps_x,
         max(block->steps_y, max(block->steps_z, block->steps_e)));
+
     // printf("step x: %d, step y: %d, step z: %d, step e: %d\r\n", block->steps_x, block->steps_y, block->steps_z, block->steps_e);
+    // SeeedOled.setTextXY(3,0);
+    // SeeedOled.putChar('x');
+    // SeeedOled.putNumber(block->steps_x);
+    // SeeedOled.setTextXY(4,0);
+    // SeeedOled.putChar('y');
+    // SeeedOled.putNumber(block->steps_y);
+    // SeeedOled.setTextXY(5,0);
+    // SeeedOled.putChar('z');
+    // SeeedOled.putNumber(block->steps_z);
 
     // Bail if this is a zero-length block
     if (block->step_event_count <= dropsegments) {
@@ -3441,6 +3459,9 @@ FORCE_INLINE void process_commands() {
 
     // Update position
     memcpy(position, target, sizeof(target)); // position[] = target[]
+    // for(int i=0;i<4;i++){
+    //   position[i] = target[i]; // position[] = target[]
+    // }
 
     planner_recalculate();
 #ifdef AUTOTEMP
@@ -4254,27 +4275,6 @@ else if (e_steps > 0) {
   //extern char inbyte(void);
   void Timer_InterruptHandler(void *data, u8 TmrCtrNumber)
   {
-    //  print(" Interrupt acknowledged \n \r ");
-    //  print("\r\n");
-    //  print("\r\n");
-    /*
-  intr_cntr++;
-  if(pulse_status==0){
-    if(intr_cntr>500) {
-      step();
-      pulse_status = 1;
-      intr_cntr = 0;
-    }
-  } else {
-    step();
-    pulse_status = 0;
-  }
-     */
-
-    //  XTmrCtr_Stop(data,TmrCtrNumber);
-    //  XTmrCtr_Reset(data,TmrCtrNumber);
-    //  XTmrCtr_Start(data,TmrCtrNumber);
-
     // If there is no current block, attempt to pop one from the buffer
     if (current_block == NULL) {
       // Anything in the buffer?
@@ -4711,9 +4711,6 @@ else if (e_steps > 0) {
     }
   }
 
-
-  int mycounter = 0;
-
   void Timer_InterruptHandler3(void *data, u8 TmrCtrNumber)
   {
     //20Hz cycle; this is used as main loop (which is parallel to main) 
@@ -4821,7 +4818,7 @@ else if (e_steps > 0) {
     int xStatus = XTmrCtr_Initialize(&TimerInstancePtr,XPAR_TMRCTR_0_DEVICE_ID);
     if(XST_SUCCESS != xStatus){
       // print("TIMER INIT FAILED \n\r");
-      SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr1 ng");
+    	SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr1 ng");
     }
 
     XTmrCtr_SetHandler(&TimerInstancePtr,
@@ -4844,7 +4841,7 @@ else if (e_steps > 0) {
     //**************************************************************************//
     xStatus = XTmrCtr_Initialize(&TimerInstancePtr2,XPAR_TMRCTR_1_DEVICE_ID);
     if(XST_SUCCESS != xStatus){
-      SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr2 ng");
+    	SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr2 ng");
       // print("TIMER INIT2 FAILED \n\r");
     }
 
@@ -4882,7 +4879,7 @@ else if (e_steps > 0) {
 
     xStatus = XTmrCtr_Initialize(&TimerInstancePtr3,XPAR_TMRCTR_2_DEVICE_ID);
     if(XST_SUCCESS != xStatus){
-      SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr3 ng");
+    	SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr3 ng");
       // print("TIMER3 INIT FAILED \n\r");
     }
 
@@ -4906,7 +4903,7 @@ else if (e_steps > 0) {
 
     xStatus = XIntc_Initialize(&IntcInstancePtr, XPAR_INTC_0_DEVICE_ID);
     if (xStatus != XST_SUCCESS){
-      SeeedOled.setTextXY(0,0);SeeedOled.putString("initc");
+    	SeeedOled.setTextXY(0,0);SeeedOled.putString("initc");
       // print("intc init error\n\r");
     }
 
@@ -4914,26 +4911,26 @@ else if (e_steps > 0) {
         (XInterruptHandler)XTmrCtr_InterruptHandler,
         (void*)&TimerInstancePtr);
     if (xStatus != XST_SUCCESS){
-      SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr0c");
+    	SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr0c");
       // print("connect timer0 error\n\r");
     }
     xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_1_VEC_ID,
         (XInterruptHandler)XTmrCtr_InterruptHandler,
         (void*)&TimerInstancePtr2);
     if (xStatus != XST_SUCCESS){
-      SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr1c");
+    	SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr1c");
       // print("connect timer1 error\n\r");
     }
     xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_2_VEC_ID,
         (XInterruptHandler)XTmrCtr_InterruptHandler,
         (void*)&TimerInstancePtr3);
     if (xStatus != XST_SUCCESS){
-      SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr3c");
+    	SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr3c");
       // print("connect timer3 error\n\r");
     }
     xStatus = XIntc_Start(&IntcInstancePtr, XIN_REAL_MODE);
     if (xStatus != XST_SUCCESS){
-      SeeedOled.setTextXY(0,0);SeeedOled.putString("intc");
+    	SeeedOled.setTextXY(0,0);SeeedOled.putString("intc");
       // print("intc start error\n\r");
     }
     XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_0_VEC_ID);
