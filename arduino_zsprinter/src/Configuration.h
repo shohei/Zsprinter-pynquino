@@ -163,7 +163,7 @@ const bool INVERT_E_DIR = false;
 #define ENDSTOPS_ONLY_FOR_HOMING // If defined the endstops will only be used for homing
 
 const bool min_software_endstops = false; //If true, axis won't move to coordinates less than zero.
-//const bool max_software_endstops = true; //If true, axis won't move to coordinates greater than the defined lengths below.
+const bool max_software_endstops = true; //If true, axis won't move to coordinates greater than the defined lengths below.
 
 
 //-----------------------------------------------------------------------

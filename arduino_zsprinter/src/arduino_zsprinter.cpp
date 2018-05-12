@@ -156,7 +156,6 @@
 #include "heater.h"
 
 #include <stdio.h>
-//#include "xil_printf.h"
 #include <stdint.h>
 #include "xil_types.h"
 #include "xtmrctr.h"
@@ -377,8 +376,8 @@ volatile int extrudemultiply=100;//100->1 200->2
 
 //boolean acceleration_enabled = false, accelerating = false;
 //unsigned long interval;
-static volatile float destination[NUM_AXIS] = {0.0, 0.0, 0.0, 0.0};
-static volatile float current_position[NUM_AXIS] = {0.0, 0.0, 0.0, 0.0};
+float destination[NUM_AXIS] = {0.0, 0.0, 0.0, 0.0};
+float current_position[NUM_AXIS] = {0.0, 0.0, 0.0, 0.0};
 float add_homing[3]= {0,0,0};
 
 static unsigned short virtual_steps_x = 0;
@@ -430,7 +429,7 @@ float delta[3];
 //bool relative_mode_e = false;  //Determines Absolute or Relative E Codes while in Absolute Coordinates mode. E is always relative in Relative Coordinates mode.
 //long timediff = 0;
 
-static bool is_homing = false;
+bool is_homing = false;
 
 //experimental feedrate calc
 //float d = 0;
@@ -462,8 +461,8 @@ unsigned long previous_millis_fan_start = 0;
 // BUFSIZE is reduced from 8 to 6 to free more RAM for the PLANNER
 #define MAX_CMD_SIZE 96
 #define BUFSIZE 6 //8
-static char cmdbuffer[BUFSIZE][MAX_CMD_SIZE] = {};
-static char cmdbuffer_dummy[BUFSIZE][MAX_CMD_SIZE] = {};
+char cmdbuffer[BUFSIZE][MAX_CMD_SIZE] = {};
+char cmdbuffer_dummy[BUFSIZE][MAX_CMD_SIZE] = {};
 bool fromsd[BUFSIZE];
 
 //Need 1kb Ram --> only work with Atmega1284
@@ -473,22 +472,19 @@ int lastxferchar;
 long xferbytes;
 #endif
 
-static unsigned char bufindr = 0;
-static unsigned char bufindw = 0;
-static unsigned char buflen = 0;
-volatile char serial_char;
-static int serial_count = 0;
-// volatile boolean comment_mode = false;
-// boolean comment_mode;
-static volatile boolean comment_mode = false;
-static boolean max_software_endstops = true;
+unsigned char bufindr = 0;
+unsigned char bufindw = 0;
+unsigned char buflen = 0;
+char serial_char;
+int serial_count = 0;
+boolean comment_mode = false;
 static char *strchr_pointer; // just a pointer to find chars in the cmd string like X, Y, Z, E, etc
 
 //Send Temperature in ｰC to Host
 int hotendtC = 0, bedtempC = 0;
 
 //Inactivity shutdown variables
-static volatile unsigned long previous_millis_cmd = 0;
+static unsigned long previous_millis_cmd = 0;
 unsigned long max_inactive_time = 0;
 unsigned long stepper_inactive_time = 0;
 
@@ -501,8 +497,8 @@ static block_t block_buffer[BLOCK_BUFFER_SIZE]; // A ring buffer for motion inst
 static volatile unsigned char block_buffer_head; // Index of the next block to be pushed
 static volatile unsigned char block_buffer_tail; // Index of the block to process now
 // The current position of the tool in absolute steps
-static volatile long target[4] = {0,0,0,0};
-static volatile long position[4] = {0,0,0,0};
+static long target[4] = {0,0,0,0};
+static long position[4] = {0,0,0,0};
 static float previous_speed[4]; // Speed of previous path line segment
 static float previous_nominal_speed; // Nominal speed of previous path line segment
 static unsigned char G92_reset_previous_speed = 0;
@@ -536,14 +532,14 @@ void initsd()
   if (!card.init(SPI_FULL_SPEED,SDSS)) {
     //if (!card.init(SPI_HALF_SPEED,SDSS))
     //          //showString(PSTR("SD init fail\r\n"));
-    printf("SD init fail\r\n");
+    // printf("SD init fail\r\n");
   }
   else if (!volume.init(&card))
     //        //showString(PSTR("volume.init failed\r\n"));
-    printf("volume.init failed\r\n");
+    // printf("volume.init failed\r\n");
   else if (!root.openRoot(&volume))
     //      //showString(PSTR("openRoot failed\r\n"));
-    printf("openRoot failed\r\n");
+    // printf("openRoot failed\r\n");
   else {
     sdactive = true;
     print_disk_info();
@@ -598,12 +594,12 @@ void fast_xfer()
   if(strcmp(strchr_pointer+4, "RAW") != 0)
   {
     //      //showString(PSTR("Invalid transfer codec\r\n"));
-    printf("Invalid transfer codec\r\n");
+    // printf("Invalid transfer codec\r\n");
     return;
   } else {
     //      //showString(PSTR("Selected codec: "));
-    printf("Selected codec: ");
-    printf(strchr_pointer+4);
+    // printf("Selected codec: ");
+    // printf(strchr_pointer+4);
     //Serial.println(strchr_pointer+4);
   }
 
@@ -612,18 +608,18 @@ void fast_xfer()
     //      //showString(PSTR("open failed, File: "));
     //      Serial.print(pstr+1);
     //      //showString(PSTR("."));
-    printf("open failed, File: ");
-    printf("%d",pstr+1);
-    printf(".");
+    // printf("open failed, File: ");
+    // printf("%d",pstr+1);
+    // printf(".");
   } else {
-    printf("Writing to file: ");
-    printf(pstr+1);
+    // printf("Writing to file: ");
+    // printf(pstr+1);
     //      //showString(PSTR("Writing to file: "));
     //      //Serial.println(pstr+1);
   }
 
   //    //showString(PSTR("ok\r\n"));
-  printf("ok\r\n");
+  // printf("ok\r\n");
 
   //RAW transfer codec
   //Host sends \0 then up to SD_FAST_XFER_CHUNK_SIZE then \0
@@ -663,12 +659,12 @@ void fast_xfer()
     {
       fastxferbuffer[SD_FAST_XFER_CHUNK_SIZE] = 0;
       file.write(fastxferbuffer);
-      printf("ok\r\n");
+      // printf("ok\r\n");
       //        //showString(PSTR("ok\r\n"));
     } else {
-      printf("Wrote ");
-      printf(xferbytes);
-      printf(" bytes.\r\n");
+      // printf("Wrote ");
+      // printf(xferbytes);
+      // printf(" bytes.\r\n");
       //        //showString(PSTR("Wrote "));
       //        Serial.print(xferbytes);
       //        //showString(PSTR(" bytes.\r\n"));
@@ -686,23 +682,23 @@ void print_disk_info(void)
 
   // print the type of card
   //    //showString(PSTR("\nCard type: "));
-  printf("\nCard type: ");
+  // printf("\nCard type: ");
   switch(card.type())
   {
   case SD_CARD_TYPE_SD1:
-    printf("SD1\r\n");
+    // printf("SD1\r\n");
     //        //showString(PSTR("SD1\r\n"));
     break;
   case SD_CARD_TYPE_SD2:
-    printf("SD2\r\n");
+    // printf("SD2\r\n");
     //        //showString(PSTR("SD2\r\n"));
     break;
   case SD_CARD_TYPE_SDHC:
-    printf("SDHC\r\n");
+    // printf("SDHC\r\n");
     //        //showString(PSTR("SDHC\r\n"));
     break;
   default:
-    printf("Unknown\r\n");
+    // printf("Unknown\r\n");
     //        //showString(PSTR("Unknown\r\n"));
   }
 
@@ -744,13 +740,13 @@ FORCE_INLINE void write_command(char *buf)
   end[3] = '\0';
 
   ////Serial.println(begin);
-  print("%d\r\n",begin);
+  // print("%d\r\n",begin);
   file.write(begin);
 
   if (file.writeError)
   {
     //          //showString(PSTR("error writing to file\r\n"));
-    printf("error writing to file\r\n");
+    // printf("error writing to file\r\n");
   }
 }
 
@@ -813,7 +809,7 @@ void showString (char *s)
   //  char c;
   //
   //  while ((c = pgm_read_byte(s++)) != 0)
-  printf("%s",s);
+  // printf("%s",s);
 }
 
 void initializeOLED(){
@@ -823,21 +819,24 @@ void initializeOLED(){
   SeeedOled.setPageMode();           //Set addressing mode to Page Mode
   SeeedOled.setTextXY(0,0);          //Set the cursor to Xth Page, Yth Column
   SeeedOled.putString("ZSprinter2"); //Print the String
-  max_software_endstops=true;
-  is_homing=false;
-  comment_mode = false;
-  for(int i=0;i<4;i++){
-  	position[i] = 0;
-  }
-  for(int i=0;i<4;i++){
-  	target[i] = 0;
-  }
-  for(int i=0;i<4;i++){
-  	destination[i] = 0;
-  }
-  for(int i=0;i<4;i++){
-  	current_position[i] = 0;
-  }
+  // max_software_endstops=true;
+  // is_homing=false;
+  // comment_mode = false;
+  // bufindr = 0;
+  // bufindw = 0;
+  // buflen = 0;
+  // for(int i=0;i<4;i++){
+  // 	position[i] = 0;
+  // }
+  // for(int i=0;i<4;i++){
+  // 	target[i] = 0;
+  // }
+  // for(int i=0;i<4;i++){
+  // 	destination[i] = 0;
+  // }
+  // for(int i=0;i<4;i++){
+  // 	current_position[i] = 0;
+  // }
   // if(!comment_mode){
   //   SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
   //   SeeedOled.putString("f"); //Print the String
@@ -852,20 +851,19 @@ void initializeOLED(){
 //------------------------------------------------
 
 void setup() {
-  setvbuf(stdin, NULL, _IONBF, 0);
-  print("Sprinter started.\r\n");
+  // setvbuf(stdin, NULL, _IONBF, 0);
+  // print("Sprinter started.\r\n");
   //  Serial.begin(BAUDRATE);
-  showString("Sprinter\r\n");
-  showString(_VERSION_TEXT);
-  showString("\r\n");
-  showString("start\r\n");
+  // showString("Sprinter\r\n");
+  // showString(_VERSION_TEXT);
+  // showString("\r\n");
+  // showString("start\r\n");
 
-    MAILBOX_CMD_ADDR = 0x0;
-    initializeOLED();
+  MAILBOX_CMD_ADDR = 0x0;
+  initializeOLED();
 
   initializeGPIO();
   initializeAxiTimer();
-
 
   for (int i = 0; i < BUFSIZE; i++) {
     fromsd[i] = false;
@@ -1040,13 +1038,13 @@ void setup() {
 #endif
 
 //#if defined(PID_SOFT_PWM) || (defined(FAN_SOFT_PWM) && (FAN_PIN > -1))
-//  printf("Soft PWM Init\r\n");
+ // printf("Soft PWM Init\r\n");
 //  init_Timer2_softpwm();
 //#endif
 
-  printf("Planner Init\r\n");
+  // printf("Planner Init\r\n");
   plan_init();  // Initialize planner; 
-  printf("Stepper Timer init\r\n");
+  // printf("Stepper Timer init\r\n");
   st_init();    // Initialize stepper
 
   // #ifdef USE_EEPROM_SETTINGS
@@ -1064,35 +1062,20 @@ void setup() {
   //Serial.println(FreeRam1());
 
   //Planner Buffer Size
-  //printf("Plan Buffer Size: ");
+  // printf("Plan Buffer Size: ");
   //printf("%d",(int)sizeof(block_t)*BLOCK_BUFFER_SIZE);
   //printf("/");
   //printf("%d\r\n",BLOCK_BUFFER_SIZE);
 
-  //for (int8_t i = 0; i < NUM_AXIS; i++) {
-  //     axis_steps_per_sqr_second[i] = max_acceleration_units_per_sq_second[i]
-  //                      * axis_steps_per_unit[i];
-  //}
-  axis_steps_per_sqr_second[0] = 800000;
-  axis_steps_per_sqr_second[1] = 800000;
-  axis_steps_per_sqr_second[2] = 800000;
-  axis_steps_per_sqr_second[3] = 800000;
+  for (int8_t i = 0; i < NUM_AXIS; i++) {
+      axis_steps_per_sqr_second[i] = max_acceleration_units_per_sq_second[i]
+                       * axis_steps_per_unit[i];
+  }
 
 }
 
-void clean_display(int x_position, int y_position){
-   SeeedOled.setTextXY(x_position,y_position);          //Set the cursor to Xth Page, Yth Column
-   SeeedOled.putString("                "); //Print the String
-   SeeedOled.setTextXY(x_position+1,y_position);          //Set the cursor to Xth Page, Yth Column
-   SeeedOled.putString("                "); //Print the String
-   SeeedOled.setTextXY(x_position+2,y_position);          //Set the cursor to Xth Page, Yth Column
-   SeeedOled.putString("                "); //Print the String
-   SeeedOled.setTextXY(x_position+3,y_position);          //Set the cursor to Xth Page, Yth Column
-   SeeedOled.putString("                "); //Print the String
-}
-
-static char current_command[64] = {};
-static int current_command_length = 0;
+char current_command[64] = {};
+int current_command_length = 0;
 
 void get_command_mailbox(){
    int x_position, y_position, length;
@@ -1115,13 +1098,13 @@ void get_command_mailbox(){
 //MAIN LOOP
 //------------------------------------------------
 
-void mydelay(int factor){
-  for(int j=0;j<factor;j++){
-    for(int i=0;i<1000;i++){
-      asm volatile("nop");
-    }
-  }
-}
+// void mydelay(int factor){
+//   for(int j=0;j<factor;j++){
+//     for(int i=0;i<1000;i++){
+//       asm volatile("nop");
+//     }
+//   }
+// }
 
 void loop() {
   while( MAILBOX_CMD_ADDR==0 ); // Wait until any of the conditions satisfied
@@ -1294,9 +1277,9 @@ void parse_command(char serial_char, int idx) {
       if (gcode_N != gcode_LastN + 1
           && (strstr(cmdbuffer[bufindw], "M110") == NULL)) {
         //showString("Serial Error: Line Number is not Last Line Number+1, Last Line:");
-        printf("Serial Error: Line Number is not Last Line Number+1, Last Line:");
-        printf("%d\r\n",gcode_LastN);
-        printf("%d\r\n",gcode_N);
+        // printf("Serial Error: Line Number is not Last Line Number+1, Last Line:");
+        // printf("%d\r\n",gcode_LastN);
+        // printf("%d\r\n",gcode_N);
         //Serial.println(gcode_LastN);
         ////Serial.println(gcode_N);
         FlushSerialRequestResend();
@@ -1316,9 +1299,9 @@ void parse_command(char serial_char, int idx) {
                       - cmdbuffer[bufindw] + 1], NULL))
                       != checksum) {
           //showString("Error: checksum mismatch, Last Line:");
-          printf("Error: checksum mismatch, Last Line:");
+          // printf("Error: checksum mismatch, Last Line:");
           //Serial.println(gcode_LastN);
-          printf("%d\r\n",gcode_LastN);
+          // printf("%d\r\n",gcode_LastN);
           FlushSerialRequestResend();
           serial_count = 0;
           return;
@@ -1326,9 +1309,9 @@ void parse_command(char serial_char, int idx) {
         //if no errors, continue parsing
       } else {
         //showString("Error: No Checksum with line number, Last Line:");
-        printf("Error: No Checksum with line number, Last Line:");
+        // printf("Error: No Checksum with line number, Last Line:");
         // Serial.println(gcode_LastN);
-        printf("%d\r\n",gcode_LastN);
+        // printf("%d\r\n",gcode_LastN);
         FlushSerialRequestResend();
         serial_count = 0;
         return;
@@ -1340,9 +1323,9 @@ void parse_command(char serial_char, int idx) {
     {
       if ((strstr(cmdbuffer[bufindw], "*") != NULL)) {
         //showString("Error: No Line Number with checksum, Last Line:");
-        printf("Error: No Line Number with checksum, Last Line:");
+        // printf("Error: No Line Number with checksum, Last Line:");
         //Serial.println(gcode_LastN);
-        printf("%d\r\n",gcode_LastN);
+        // printf("%d\r\n",gcode_LastN);
         serial_count = 0;
         return;
       }
@@ -1357,7 +1340,7 @@ void parse_command(char serial_char, int idx) {
       case 1:
         // showString("ok\r\n");
         ////Serial.println("ok");
-        printf("ok\r\n");
+        // printf("ok\r\n");
         break;
 
 
@@ -1582,34 +1565,34 @@ FORCE_INLINE void homeaxis(int axis){
 
 //no work, since we define pins in THIS file, not pins.h
 void dumpAllPins(){
-  printf("MOTHERBOARD :%d\r\n"  , MOTHERBOARD );
-  printf("X_STEP_PIN  :%d\r\n"  , X_STEP_PIN  );
-  printf("X_DIR_PIN   :%d\r\n"  , X_DIR_PIN   );
-  printf("X_ENABLE_PIN:%d\r\n"  , X_ENABLE_PIN );
-  printf("X_MIN_PIN   :%d\r\n" ,  X_MIN_PIN  );
-  printf("X_MAX_PIN   :%d\r\n" ,  X_MAX_PIN  );
-  printf("Y_STEP_PIN  :%d\r\n" ,  Y_STEP_PIN );
-  printf("Y_DIR_PIN   :%d\r\n" ,  Y_DIR_PIN  );
-  printf("Y_ENABLE_PIN:%d\r\n"  , Y_ENABLE_PIN );
-  printf("Y_MIN_PIN   :%d\r\n"  , Y_MIN_PIN    );
-  printf("Y_MAX_PIN   :%d\r\n"  , Y_MAX_PIN    );
-  printf("Z_STEP_PIN  :%d\r\n"  , Z_STEP_PIN   );
-  printf("Z_DIR_PIN   :%d\r\n"  , Z_DIR_PIN    );
-  printf("Z_ENABLE_PIN:%d\r\n"  , Z_ENABLE_PIN );
-  printf("Z_MIN_PIN   :%d\r\n"  , Z_MIN_PIN    );
-  printf("Z_MAX_PIN   :%d\r\n"  , Z_MAX_PIN    );
-  printf("E_STEP_PIN  :%d\r\n"  , E_STEP_PIN   );
-  printf("E_DIR_PIN   :%d\r\n"  , E_DIR_PIN    );
-  printf("E_ENABLE_PIN:%d\r\n"  , E_ENABLE_PIN );
-  printf("SDPOWER     :%d\r\n"  , SDPOWER      );
-  printf("SDSS        :%d\r\n"  , SDSS         );
-  printf("LED_PIN     :%d\r\n"  , LED_PIN      );
-  printf("FAN_PIN     :%d\r\n"  , FAN_PIN      );
-  printf("PS_ON_PIN   :%d\r\n"  , PS_ON_PIN    );
-  printf("KILL_PIN    :%d\r\n"  , KILL_PIN     );
-  printf("ALARM_PIN   :%d\r\n"  , ALARM_PIN    );
-  printf("HEATER_0_PIN:%d\r\n"  , HEATER_0_PIN );
-  printf("TEMP_0_PIN  :%d\r\n"  , TEMP_0_PIN   );
+  // printf("MOTHERBOARD :%d\r\n"  , MOTHERBOARD );
+  // printf("X_STEP_PIN  :%d\r\n"  , X_STEP_PIN  );
+  // printf("X_DIR_PIN   :%d\r\n"  , X_DIR_PIN   );
+  // printf("X_ENABLE_PIN:%d\r\n"  , X_ENABLE_PIN );
+  // printf("X_MIN_PIN   :%d\r\n" ,  X_MIN_PIN  );
+  // printf("X_MAX_PIN   :%d\r\n" ,  X_MAX_PIN  );
+  // printf("Y_STEP_PIN  :%d\r\n" ,  Y_STEP_PIN );
+  // printf("Y_DIR_PIN   :%d\r\n" ,  Y_DIR_PIN  );
+  // printf("Y_ENABLE_PIN:%d\r\n"  , Y_ENABLE_PIN );
+  // printf("Y_MIN_PIN   :%d\r\n"  , Y_MIN_PIN    );
+  // printf("Y_MAX_PIN   :%d\r\n"  , Y_MAX_PIN    );
+  // printf("Z_STEP_PIN  :%d\r\n"  , Z_STEP_PIN   );
+  // printf("Z_DIR_PIN   :%d\r\n"  , Z_DIR_PIN    );
+  // printf("Z_ENABLE_PIN:%d\r\n"  , Z_ENABLE_PIN );
+  // printf("Z_MIN_PIN   :%d\r\n"  , Z_MIN_PIN    );
+  // printf("Z_MAX_PIN   :%d\r\n"  , Z_MAX_PIN    );
+  // printf("E_STEP_PIN  :%d\r\n"  , E_STEP_PIN   );
+  // printf("E_DIR_PIN   :%d\r\n"  , E_DIR_PIN    );
+  // printf("E_ENABLE_PIN:%d\r\n"  , E_ENABLE_PIN );
+  // printf("SDPOWER     :%d\r\n"  , SDPOWER      );
+  // printf("SDSS        :%d\r\n"  , SDSS         );
+  // printf("LED_PIN     :%d\r\n"  , LED_PIN      );
+  // printf("FAN_PIN     :%d\r\n"  , FAN_PIN      );
+  // printf("PS_ON_PIN   :%d\r\n"  , PS_ON_PIN    );
+  // printf("KILL_PIN    :%d\r\n"  , KILL_PIN     );
+  // printf("ALARM_PIN   :%d\r\n"  , ALARM_PIN    );
+  // printf("HEATER_0_PIN:%d\r\n"  , HEATER_0_PIN );
+  // printf("TEMP_0_PIN  :%d\r\n"  , TEMP_0_PIN   );
 }
 
 //------------------------------------------------
@@ -1774,8 +1757,8 @@ FORCE_INLINE void process_commands() {
 #ifdef SEND_WRONG_CMD_INFO
       //showString(PSTR("Unknown G-COM:"));
       //Serial.println(cmdbuffer[bufindr]);
-      printf("Unknown G-COM:");
-      printf("%s\r\n",cmdbuffer[bufindr]);
+      // printf("Unknown G-COM:");
+      // printf("%s\r\n",cmdbuffer[bufindr]);
 #endif
       break;
     }
@@ -1813,20 +1796,20 @@ FORCE_INLINE void process_commands() {
         {
           //showString(PSTR("File opened:"));
           //Serial.print(strchr_pointer + 4);
-          printf("File opened:");
-          printf("%d",strchr_pointer+4);
-          printf(" Size:");
+          // printf("File opened:");
+          // printf("%d",strchr_pointer+4);
+          // printf(" Size:");
           //showString(PSTR(" Size:"));
-          printf("%d\r\n",file.fileSize());
+          // printf("%d\r\n",file.fileSize());
           //Serial.println(file.fileSize());
           sdpos = 0;
           filesize = file.fileSize();
-          printf("File selected\r\n");
+          // printf("File selected\r\n");
           //showString(PSTR("File selected\r\n"));
         }
         else
         {
-          printf("file.open failed\r\n");
+          // printf("file.open failed\r\n");
           //showString(PSTR("file.open failed\r\n"));
         }
       }
@@ -1857,14 +1840,14 @@ FORCE_INLINE void process_commands() {
         //Serial.print(sdpos);
         //showString(PSTR("/"));
         //Serial.println(filesize);
-        printf("SD printing byte ");
-        printf("%d",sdpos);
-        printf("/");
-        printf("%d\r\n",filesize);
+        // printf("SD printing byte ");
+        // printf("%d",sdpos);
+        // printf("/");
+        // printf("%d\r\n",filesize);
       }
       else
       {
-        printf("Not SD printing\r\n");
+        // printf("Not SD printing\r\n");
         //showString(PSTR("Not SD printing\r\n"));
       }
       break;
@@ -1887,16 +1870,16 @@ FORCE_INLINE void process_commands() {
           //showString("open failed, File: ");
           //Serial.print(strchr_pointer + 4);
           //showString(".");
-          printf("open failed, File: ");
-          printf("%d",strchr_pointer + 4);
-          printf(".");
+          // printf("open failed, File: ");
+          // printf("%d",strchr_pointer + 4);
+          // printf(".");
         }
         else
         {
           savetosd = true;
           //showString("Writing to file: ");
-          printf("Writing to file: ");
-          print("%d\r\n",strchr_pointer + 4);
+          // printf("Writing to file: ");
+          // print("%d\r\n",strchr_pointer + 4);
         }
       }
       break;
@@ -1918,12 +1901,12 @@ FORCE_INLINE void process_commands() {
 
         if(file.remove(&root, strchr_pointer + 4))
         {
-          printf("File deleted\r\n");
+          // printf("File deleted\r\n");
           //showString(PSTR("File deleted\r\n"));
         }
         else
         {
-          printf("Deletion failed\r\n");
+          // printf("Deletion failed\r\n");
           //showString(PSTR("Deletion failed\r\n"));
         }
       }
@@ -1933,8 +1916,8 @@ FORCE_INLINE void process_commands() {
       fast_xfer();
       break;
     case 31://M31 - high speed xfer capabilities
-      printf("RAW:");
-      printf("%d\r\n",SD_FAST_XFER_CHUNK_SIZE);
+      // printf("RAW:");
+      // printf("%d\r\n",SD_FAST_XFER_CHUNK_SIZE);
       //showString(PSTR("RAW:"));
       //Serial.println(SD_FAST_XFER_CHUNK_SIZE);
       break;
@@ -2003,7 +1986,7 @@ FORCE_INLINE void process_commands() {
       //showString(PSTR("ok T:"));
       //Serial.print(hotendtC);
       //printf("current_raw:%d\r\n",current_raw);
-      printf("ok T:%d",hotendtC);
+      // printf("ok T:%d",hotendtC);
 #ifdef PIDTEMP
       //showString(PSTR(" @:"));
       //Serial.print(heater_duty);
@@ -2015,19 +1998,19 @@ FORCE_INLINE void process_commands() {
        //showString(PSTR(",D:"));
        Serial.print(dTerm);
        */
-      printf(" @:%d,P:%d,I:%d,D:%d",heater_duty,pTerm,iTerm,dTerm);
+      // printf(" @:%d,P:%d,I:%d,D:%d",heater_duty,pTerm,iTerm,dTerm);
 #ifdef AUTOTEMP
       //showString(PSTR(",AU:"));
       //Serial.print(autotemp_setpoint);
-      printf(",AU:%d",autotemp_setpoint);
+      // printf(",AU:%d",autotemp_setpoint);
 #endif
 #endif
 #if TEMP_1_PIN > -1 || defined BED_USES_AD595
-      printf(" B:%d\r\n",bedtempC);
+      // printf(" B:%d\r\n",bedtempC);
       //showString(PSTR(" B:"));
       //Serial.println(bedtempC);
 #else
-      printf("\r\n");
+      // printf("\r\n");
       //Serial.println();
 #endif
 #else
@@ -2072,7 +2055,7 @@ FORCE_INLINE void process_commands() {
           {
             //showString(PSTR("T:"));
             //Serial.println( analog2temp(current_raw) );
-            printf("T:%d\r\n",analog2temp(current_raw));
+            // printf("T:%d\r\n",analog2temp(current_raw));
             codenum = millis();
           }
           //manage_heater();
@@ -2107,7 +2090,7 @@ FORCE_INLINE void process_commands() {
           //showString(PSTR("T:"));
           //Serial.print(hotendtC);
           //showString(PSTR(" B:"));
-          printf("T:%d B:%d\r\n",hotendtC,analog2tempBed(current_bed_raw));
+          // printf("T:%d B:%d\r\n",hotendtC,analog2tempBed(current_bed_raw));
           //Serial.println( analog2tempBed(current_bed_raw) );
           codenum = millis();
         }
@@ -2227,8 +2210,8 @@ FORCE_INLINE void process_commands() {
       //        }
       break;
     case 93: // M93 show current axis steps.
-      printf("ok \r\n");
-      printf("X:%dY:%dZ:%dE:%d\r\n",axis_steps_per_unit[0],axis_steps_per_unit[1],axis_steps_per_unit[2],axis_steps_per_unit[3]);
+      // printf("ok \r\n");
+      // printf("X:%dY:%dZ:%dE:%d\r\n",axis_steps_per_unit[0],axis_steps_per_unit[1],axis_steps_per_unit[2],axis_steps_per_unit[3]);
       //showString(PSTR("ok "));
       //showString(PSTR("X:"));
       //Serial.print(axis_steps_per_unit[0]);
@@ -2241,15 +2224,15 @@ FORCE_INLINE void process_commands() {
       break;
     case 115: // M115
       //showString(PSTR("FIRMWARE_NAME: Sprinter Experimental PROTOCOL_VERSION:1.0 MACHINE_TYPE:Mendel EXTRUDER_COUNT:1\r\n"));
-      printf("FIRMWARE_NAME: Sprinter Experimental PROTOCOL_VERSION:1.0 MACHINE_TYPE:Mendel EXTRUDER_COUNT:1\r\n");
-      //printf("%s\r\n",uuid);
+      // printf("FIRMWARE_NAME: Sprinter Experimental PROTOCOL_VERSION:1.0 MACHINE_TYPE:Mendel EXTRUDER_COUNT:1\r\n");
+      // printf("%s\r\n",uuid);
       ////Serial.println(uuid);
-      printf("%s\r\n",_DEF_CHAR_UUID);
+      // printf("%s\r\n",_DEF_CHAR_UUID);
       //showString(PSTR(_DEF_CHAR_UUID));
       //showString(PSTR("\r\n"));
       break;
     case 114: // M114
-      printf("X: %f, Y: %f, Z: %f, E: %f\r\n",current_position[0],current_position[1],current_position[2],current_position[3]);
+      // printf("X: %f, Y: %f, Z: %f, E: %f\r\n",current_position[0],current_position[1],current_position[2],current_position[3]);
       //showString(PSTR("X:"));
       //  Serial.print(current_position[0]);
       //showString(PSTR("Y:"));
@@ -2341,7 +2324,7 @@ FORCE_INLINE void process_commands() {
       break;
     case 206: // M206 additional homing offset
       if (code_seen('D')) {
-        printf("Addhome X:%d Y:%d Z%d\r\n",add_homing[0],add_homing[1],add_homing[2]);
+        // printf("Addhome X:%d Y:%d Z%d\r\n",add_homing[0],add_homing[1],add_homing[2]);
         //showString(PSTR("Addhome X:")); Serial.print(add_homing[0]);
         //showString(PSTR(" Y:")); Serial.print(add_homing[1]);
         //showString(PSTR(" Z:")); //Serial.println(add_homing[2]);
@@ -2436,7 +2419,7 @@ FORCE_INLINE void process_commands() {
         tt_minval = analog2temp(current_raw_minval);
 #endif
 
-      printf("Tmin:%d / Tmax:%d \r\n",tt_minval,tt_maxval);
+      // printf("Tmin:%d / Tmax:%d \r\n",tt_minval,tt_maxval);
       //showString(PSTR("Tmin:"));
       //Serial.print(tt_minval);
       //showString(PSTR(" / Tmax:"));
@@ -2447,20 +2430,20 @@ FORCE_INLINE void process_commands() {
       current_raw_minval = 32000;
       current_raw_maxval = -32000;
 
-      printf("T Minmax Reset \r\n");
+      // printf("T Minmax Reset \r\n");
       //showString(PSTR("T Minmax Reset "));
       break;
 #endif
     case 603: // M603  Free RAM
-      //printf("Free Ram: %d\r\n",FreeRam1());
+      // printf("Free Ram: %d\r\n",FreeRam1());
       //showString(PSTR("Free Ram: "));
       //Serial.println(FreeRam1());
       break;
 
     case 700: //Versatile command for debug
-      printf("gpio_read:%d\r\n",XGpio_DiscreteRead(&ShieldInst, 1));
-      printf("xmax_pin:%d\r\n",X_MAX_PIN);
-      printf("xmax_pin_read:%d\r\n",_CHK(XGpio_DiscreteRead(&ShieldInst, 1), X_MAX_PIN));
+      // printf("gpio_read:%d\r\n",XGpio_DiscreteRead(&ShieldInst, 1));
+      // printf("xmax_pin:%d\r\n",X_MAX_PIN);
+      // printf("xmax_pin_read:%d\r\n",_CHK(XGpio_DiscreteRead(&ShieldInst, 1), X_MAX_PIN));
       break;
 
     case 701:
@@ -2468,18 +2451,18 @@ FORCE_INLINE void process_commands() {
       break;
 
     case 702:
-      printf("[GPIO status]:%d\r\n",XGpio_DiscreteRead(&ShieldInst, 1));
-      printf("xmax endstop:%d\r\n",_CHK(XGpio_DiscreteRead(&ShieldInst, 1), X_MAX_PIN));
-      printf("ymax endstop:%d\r\n",_CHK(XGpio_DiscreteRead(&ShieldInst, 1), Y_MAX_PIN));
-      printf("zmax endstop:%d\r\n",_CHK(XGpio_DiscreteRead(&ShieldInst, 1), Z_MAX_PIN));
-      printf("\r\n");
-      printf("xmin endstop:%d\r\n",_CHK(XGpio_DiscreteRead(&ShieldInst, 1), X_MIN_PIN));
-      printf("ymin endstop:%d\r\n",_CHK(XGpio_DiscreteRead(&ShieldInst, 1), Y_MIN_PIN));
-      printf("zmin endstop:%d\r\n",_CHK(XGpio_DiscreteRead(&ShieldInst, 1), Z_MIN_PIN));
+      // printf("[GPIO status]:%d\r\n",XGpio_DiscreteRead(&ShieldInst, 1));
+      // printf("xmax endstop:%d\r\n",_CHK(XGpio_DiscreteRead(&ShieldInst, 1), X_MAX_PIN));
+      // printf("ymax endstop:%d\r\n",_CHK(XGpio_DiscreteRead(&ShieldInst, 1), Y_MAX_PIN));
+      // printf("zmax endstop:%d\r\n",_CHK(XGpio_DiscreteRead(&ShieldInst, 1), Z_MAX_PIN));
+      // printf("\r\n");
+      // printf("xmin endstop:%d\r\n",_CHK(XGpio_DiscreteRead(&ShieldInst, 1), X_MIN_PIN));
+      // printf("ymin endstop:%d\r\n",_CHK(XGpio_DiscreteRead(&ShieldInst, 1), Y_MIN_PIN));
+      // printf("zmin endstop:%d\r\n",_CHK(XGpio_DiscreteRead(&ShieldInst, 1), Z_MIN_PIN));
       break;
 
     case 703:
-      printf("data direction:%d\r\n",XGpio_GetDataDirection(&ShieldInst, 1));
+      // printf("data direction:%d\r\n",XGpio_GetDataDirection(&ShieldInst, 1));
       break;
 
     case 704:
@@ -2498,14 +2481,14 @@ FORCE_INLINE void process_commands() {
 #ifdef SEND_WRONG_CMD_INFO
       //showString(PSTR("Unknown M-COM:"));
       //Serial.println(cmdbuffer[bufindr]);
-      printf("Unknown M-COM:%d\r\n",cmdbuffer[bufindr]);
+      // printf("Unknown M-COM:%d\r\n",cmdbuffer[bufindr]);
 #endif
       break;
 
     }
 
     } else {
-      printf("Unknown command:%s\r\n",cmdbuffer[bufindr]);
+      // printf("Unknown command:%s\r\n",cmdbuffer[bufindr]);
       //showString(PSTR("Unknown command:\r\n"));
       //Serial.println(cmdbuffer[bufindr]);
     }
@@ -2519,7 +2502,7 @@ FORCE_INLINE void process_commands() {
     //always commented out below
     //char cmdbuffer[bufindr][100]="Resend:";
     //  Serial.flush();
-    printf("Resend:%d\r\n",gcode_LastN+1);
+    // printf("Resend:%d\r\n",gcode_LastN+1);
     //  //showString(PSTR("Resend:"));
     //  //Serial.println(gcode_LastN + 1);
     ClearToSend();
@@ -2531,7 +2514,7 @@ FORCE_INLINE void process_commands() {
     if(fromsd[bufindr])
       return;
 #endif
-    printf("ok\r\n");
+    // printf("ok\r\n");
     //  //showString(PSTR("ok\r\n"));
     ////Serial.println("ok");
   }
@@ -2607,9 +2590,6 @@ FORCE_INLINE void process_commands() {
     //plan_buffer_line(destination[X_AXIS], destination[Y_AXIS],
     //    destination[Z_AXIS], destination[E_AXIS], help_feedrate / 6000.0);
 
-    // destination[E_AXIS] = 0;
-    // SeeedOled.setTextXY(1,0);
-    // SeeedOled.putFloat(destination[E_AXIS]);
     plan_buffer_line(delta[X_AXIS], delta[Y_AXIS],
         delta[Z_AXIS], destination[E_AXIS], help_feedrate / 6000.0);
 
@@ -2619,28 +2599,7 @@ FORCE_INLINE void process_commands() {
   }
 
 
-  // void inverse_kinematics(const float cartesian[3]) {
-  void inverse_kinematics(volatile float cartesian[3]) {
-
-  	/* crazy re-initialization :D */
-    delta_diagonal_rod = DELTA_DIAGONAL_ROD;
-    delta_radius = DELTA_RADIUS;
-    delta_radius_trim_tower_1 = DELTA_RADIUS_TRIM_TOWER_1;
-    delta_radius_trim_tower_2 = DELTA_RADIUS_TRIM_TOWER_2;
-    delta_radius_trim_tower_3 = DELTA_RADIUS_TRIM_TOWER_3;
-    delta_diagonal_rod_trim_tower_1 = DELTA_DIAGONAL_ROD_TRIM_TOWER_1;
-    delta_diagonal_rod_trim_tower_2 = DELTA_DIAGONAL_ROD_TRIM_TOWER_2;
-    delta_diagonal_rod_trim_tower_3 = DELTA_DIAGONAL_ROD_TRIM_TOWER_3;
-    delta_diagonal_rod_2_tower_1 = sq(delta_diagonal_rod + delta_diagonal_rod_trim_tower_1);
-    delta_diagonal_rod_2_tower_2 = sq(delta_diagonal_rod + delta_diagonal_rod_trim_tower_2);
-    delta_diagonal_rod_2_tower_3 = sq(delta_diagonal_rod + delta_diagonal_rod_trim_tower_3);
-    delta_tower1_x = -SIN_60 * (delta_radius + DELTA_RADIUS_TRIM_TOWER_1); // front left tower
-    delta_tower1_y = -COS_60 * (delta_radius + delta_radius_trim_tower_1);
-    delta_tower2_x =  SIN_60 * (delta_radius + DELTA_RADIUS_TRIM_TOWER_2); // front right tower
-    delta_tower2_y = -COS_60 * (delta_radius + delta_radius_trim_tower_2);
-    delta_tower3_x = 0;                                                    // back middle tower
-    delta_tower3_y = (delta_radius + delta_radius_trim_tower_3);
-    /* */
+  void inverse_kinematics(const float cartesian[3]) {
 
     delta[TOWER_1] = sqrt(delta_diagonal_rod_2_tower_1
         - sq(delta_tower1_x - cartesian[X_AXIS])
@@ -2656,7 +2615,7 @@ FORCE_INLINE void process_commands() {
     ) + cartesian[Z_AXIS];
 
     //for(int i=0;i<3;i++){
-    //  printf("cartesian[%d]: %f, delta[%d]: %f\r\n",i,cartesian[i],i,delta[i]);
+     // printf("cartesian[%d]: %f, delta[%d]: %f\r\n",i,cartesian[i],i,delta[i]);
     //}
 
   }
@@ -3177,7 +3136,7 @@ FORCE_INLINE void process_commands() {
     block->step_event_count = max(block->steps_x,
         max(block->steps_y, max(block->steps_z, block->steps_e)));
 
-    printf("step x: %d, step y: %d, step z: %d, step e: %d\r\n", block->steps_x, block->steps_y, block->steps_z, block->steps_e);
+    // printf("step x: %d, step y: %d, step z: %d, step e: %d\r\n", block->steps_x, block->steps_y, block->steps_z, block->steps_e);
 
     // Bail if this is a zero-length block
     if (block->step_event_count <= dropsegments) {
@@ -3210,28 +3169,28 @@ FORCE_INLINE void process_commands() {
       }
     }
 
-#ifdef DELAY_ENABLE
-    if(block->steps_x != 0)
-    {
-      enable_x();
-      delayMicroseconds(DELAY_ENABLE);
-    }
-    if(block->steps_y != 0)
-    {
-      enable_y();
-      delayMicroseconds(DELAY_ENABLE);
-    }
-    if(block->steps_z != 0)
-    {
-      enable_z();
-      delayMicroseconds(DELAY_ENABLE);
-    }
-    if(block->steps_e != 0)
-    {
-      enable_e();
-      delayMicroseconds(DELAY_ENABLE);
-    }
-#else
+// #ifdef DELAY_ENABLE
+//     if(block->steps_x != 0)
+//     {
+//       enable_x();
+//       delayMicroseconds(DELAY_ENABLE);
+//     }
+//     if(block->steps_y != 0)
+//     {
+//       enable_y();
+//       delayMicroseconds(DELAY_ENABLE);
+//     }
+//     if(block->steps_z != 0)
+//     {
+//       enable_z();
+//       delayMicroseconds(DELAY_ENABLE);
+//     }
+//     if(block->steps_e != 0)
+//     {
+//       enable_e();
+//       delayMicroseconds(DELAY_ENABLE);
+//     }
+// #else
     //enable active axes
     if (block->steps_x != 0)
       enable_x();
@@ -3241,7 +3200,7 @@ FORCE_INLINE void process_commands() {
       enable_z();
     if (block->steps_e != 0)
       enable_e();
-#endif
+// #endif
 
     if (block->steps_e == 0) {
       if (feed_rate < mintravelfeedrate)
@@ -4404,7 +4363,7 @@ else if (e_steps > 0) {
           bool x_max_endstop=( x_max_pin_read != X_ENDSTOP_INVERT);
           // bool x_max_endstop=(READ(X_MAX_PIN) != X_ENDSTOP_INVERT);
           if(x_max_endstop && old_x_max_endstop && (current_block->steps_x > 0)){
-            xil_printf("x max endstop hit!\r\n");
+            // xil_printf("x max endstop hit!\r\n");
             if(!is_homing)
               endstop_x_hit=true;
             else
@@ -4469,7 +4428,7 @@ else if (e_steps > 0) {
           // bool y_max_endstop=(READ(Y_MAX_PIN) != Y_ENDSTOP_INVERT);
           // bool y_max_endstop=(READ(Y_MAX_PIN) != Y_ENDSTOP_INVERT);
           if(y_max_endstop && old_y_max_endstop && (current_block->steps_y > 0)){
-            xil_printf("y max endstop hit!\r\n");
+            // xil_printf("y max endstop hit!\r\n");
             if(!is_homing)
               endstop_y_hit=true;
             else
@@ -4533,7 +4492,7 @@ else if (e_steps > 0) {
           bool z_max_endstop=( z_max_pin_read != Z_ENDSTOP_INVERT);
           // bool z_max_endstop=(READ(Z_MAX_PIN) != Z_ENDSTOP_INVERT);
           if(z_max_endstop && old_z_max_endstop && (current_block->steps_z > 0)) {
-            xil_printf("z max endstop hit!\r\n");
+            // xil_printf("z max endstop hit!\r\n");
             if(!is_homing)
               endstop_z_hit=true;
             else
@@ -4764,35 +4723,38 @@ else if (e_steps > 0) {
     }
   }
 
+
+  int mycounter = 0;
+
   void Timer_InterruptHandler3(void *data, u8 TmrCtrNumber)
   {
     //20Hz cycle; this is used as main loop (which is parallel to main) 
     if(buflen) {
-  #ifdef SDSUPPORT
-      if(savetosd)
-      {
-        if(strstr(cmdbuffer[bufindr],"M29") == NULL)
-        {
-          write_command(cmdbuffer[bufindr]);
-          printf("ok\r\n");
-          //            //showString(PSTR("ok\r\n"));
-        }
-        else
-        {
-          file.sync();
-          file.close();
-          savetosd = false;
-          printf("Done saving file.\r\n");
-          //            //showString(PSTR("Done saving file.\r\n"));
-        }
-      }
-      else
-      {
-        process_commands();
-      }
-  #else
+  // #ifdef SDSUPPORT
+  //     if(savetosd)
+  //     {
+  //       if(strstr(cmdbuffer[bufindr],"M29") == NULL)
+  //       {
+  //         write_command(cmdbuffer[bufindr]);
+  //         // printf("ok\r\n");
+  //         //            //showString(PSTR("ok\r\n"));
+  //       }
+  //       else
+  //       {
+  //         file.sync();
+  //         file.close();
+  //         savetosd = false;
+  //         // printf("Done saving file.\r\n");
+  //         //            //showString(PSTR("Done saving file.\r\n"));
+  //       }
+  //     }
+  //     else
+  //     {
+  //       process_commands();
+  //     }
+  // #else
       process_commands();
-  #endif
+  // #endif
   
       buflen = (buflen - 1);
       bufindr++;
@@ -4822,12 +4784,12 @@ else if (e_steps > 0) {
   void initializeXADC(){
     SysMonConfigPtr = XSysMon_LookupConfig(SYSMON_DEVICE_ID);
     if(SysMonConfigPtr == NULL) {
-      printf("XsysMon LookupConfig FAILED\n\r");
+      // printf("XsysMon LookupConfig FAILED\n\r");
     }
     int xStatus;
     xStatus = XSysMon_CfgInitialize(SysMonInstPtr, SysMonConfigPtr,SysMonConfigPtr->BaseAddress);
     if(XST_SUCCESS != xStatus) {
-      printf("XsysMon CfgInitialize FAILED\r\n");
+      // printf("XsysMon CfgInitialize FAILED\r\n");
     }
     XSysMon_GetStatus(SysMonInstPtr); // Clear the old status
   }
@@ -4850,12 +4812,12 @@ else if (e_steps > 0) {
     _SET(shield_dir, X_MAX_PIN);
     _SET(shield_dir, Y_MAX_PIN);
     _SET(shield_dir, Z_MAX_PIN);
-    printf("shield_dir: %d\r\n",shield_dir);
+    // printf("shield_dir: %d\r\n",shield_dir);
     XGpio_SetDataDirection(&ShieldInst, 1, shield_dir);
     //All are initialized as low
-    printf("<a>shield value: %d\r\n",XGpio_DiscreteRead(&ShieldInst, 1));
+    // printf("<a>shield value: %d\r\n",XGpio_DiscreteRead(&ShieldInst, 1));
     XGpio_DiscreteWrite(&ShieldInst, 1, 0x00);
-    printf("<b>shield value: %d\r\n",XGpio_DiscreteRead(&ShieldInst, 1));
+    // printf("<b>shield value: %d\r\n",XGpio_DiscreteRead(&ShieldInst, 1));
     //XGpio_SetDataDirection(&ShieldInst, 1, 0x00);
   }
 
@@ -4869,8 +4831,10 @@ else if (e_steps > 0) {
     // Timer1 init
     //**************************************************************************//
     int xStatus = XTmrCtr_Initialize(&TimerInstancePtr,XPAR_TMRCTR_0_DEVICE_ID);
-    if(XST_SUCCESS != xStatus)
-      print("TIMER INIT FAILED \n\r");
+    if(XST_SUCCESS != xStatus){
+      // print("TIMER INIT FAILED \n\r");
+    	SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr1 ng");
+    }
 
     XTmrCtr_SetHandler(&TimerInstancePtr,
         Timer_InterruptHandler,
@@ -4879,6 +4843,7 @@ else if (e_steps > 0) {
     XTmrCtr_SetResetValue(&TimerInstancePtr,
         0, //Channel 0
         2000*50); //(OCR1A=2000) => 1kHz. 100MHz(FPGA)/2MHz(Mega2560 pre-scaled)=50.
+        // 0x5f5e100); //1Hz -> for debug
     //      //Therefore, (2000*50) => 1kHz on AXI timer. Whatever times 50 makes AXI timer value.
     //      //0xf8000000);
 
@@ -4890,8 +4855,10 @@ else if (e_steps > 0) {
     // Timer2 init
     //**************************************************************************//
     xStatus = XTmrCtr_Initialize(&TimerInstancePtr2,XPAR_TMRCTR_1_DEVICE_ID);
-    if(XST_SUCCESS != xStatus)
-      print("TIMER INIT2 FAILED \n\r");
+    if(XST_SUCCESS != xStatus){
+    	SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr2 ng");
+      // print("TIMER INIT2 FAILED \n\r");
+    }
 
     XTmrCtr_SetHandler(&TimerInstancePtr2,
         Timer_InterruptHandler2,
@@ -4926,8 +4893,10 @@ else if (e_steps > 0) {
     //**************************************************************************//
 
     xStatus = XTmrCtr_Initialize(&TimerInstancePtr3,XPAR_TMRCTR_2_DEVICE_ID);
-    if(XST_SUCCESS != xStatus)
-      print("TIMER3 INIT FAILED \n\r");
+    if(XST_SUCCESS != xStatus){
+    	SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr3 ng");
+      // print("TIMER3 INIT FAILED \n\r");
+    }
 
     XTmrCtr_SetHandler(&TimerInstancePtr3,
         Timer_InterruptHandler3,
@@ -4936,7 +4905,7 @@ else if (e_steps > 0) {
     XTmrCtr_SetResetValue(&TimerInstancePtr3,
         0, //Channel 0
         0x4c4b40); //20Hz 
-        //0x5f5e100); //1Hz -> for debug
+        // 0x5f5e100); //1Hz -> for debug
         //0x1312d00);//5Hz
 
     XTmrCtr_SetOptions(&TimerInstancePtr3,
@@ -4949,30 +4918,35 @@ else if (e_steps > 0) {
 
     xStatus = XIntc_Initialize(&IntcInstancePtr, XPAR_INTC_0_DEVICE_ID);
     if (xStatus != XST_SUCCESS){
-      print("intc init error\n\r");
+    	SeeedOled.setTextXY(0,0);SeeedOled.putString("initc");
+      // print("intc init error\n\r");
     }
 
     xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_0_VEC_ID,
         (XInterruptHandler)XTmrCtr_InterruptHandler,
         (void*)&TimerInstancePtr);
     if (xStatus != XST_SUCCESS){
-      print("connect timer0 error\n\r");
+    	SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr0c");
+      // print("connect timer0 error\n\r");
     }
     xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_1_VEC_ID,
         (XInterruptHandler)XTmrCtr_InterruptHandler,
         (void*)&TimerInstancePtr2);
     if (xStatus != XST_SUCCESS){
-      print("connect timer1 error\n\r");
+    	SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr1c");
+      // print("connect timer1 error\n\r");
     }
     xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_2_VEC_ID,
         (XInterruptHandler)XTmrCtr_InterruptHandler,
         (void*)&TimerInstancePtr3);
     if (xStatus != XST_SUCCESS){
-      print("connect timer3 error\n\r");
+    	SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr3c");
+      // print("connect timer3 error\n\r");
     }
     xStatus = XIntc_Start(&IntcInstancePtr, XIN_REAL_MODE);
     if (xStatus != XST_SUCCESS){
-      print("intc start error\n\r");
+    	SeeedOled.setTextXY(0,0);SeeedOled.putString("intc");
+      // print("intc start error\n\r");
     }
     XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_0_VEC_ID);
     XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_1_VEC_ID);
@@ -4980,13 +4954,13 @@ else if (e_steps > 0) {
     microblaze_enable_interrupts();
 
     XTmrCtr_Start(&TimerInstancePtr,0);
-    print("AXI timer1 start \n\r");
+    // print("AXI timer1 start \n\r");
     XTmrCtr_Start(&TimerInstancePtr2,0);
-    print("AXI timer2 - timer0 start \n\r");
+    // print("AXI timer2 - timer0 start \n\r");
     XTmrCtr_Start(&TimerInstancePtr2,1);
-    print("AXI timer2 - timer1 start \n\r");
+    // print("AXI timer2 - timer1 start \n\r");
     XTmrCtr_Start(&TimerInstancePtr3,0);
-    print("AXI timer3 start \n\r");
+    // print("AXI timer3 start \n\r");
 
   }
 

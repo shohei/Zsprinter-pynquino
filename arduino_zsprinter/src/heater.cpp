@@ -540,7 +540,7 @@ void manage_heater(XSysMon *SysMonInstPtr)
 		{
 			// showString(PSTR("MTEMP:"));
 			//      print(String(millis()));
-			printf("MTEMP:%d",millis());
+			// printf("MTEMP:%d",millis());
 			if(manage_monitor<1)
 			{
 				//        showString(PSTR(" "));
@@ -548,28 +548,28 @@ void manage_heater(XSysMon *SysMonInstPtr)
 				//        showString(PSTR(" "));
 				//        Serial.print(target_temp);
 				//        showString(PSTR(" "));
-				printf(" %d %d",analog2temp(current_raw),target_temp);
+				// printf(" %d %d",analog2temp(current_raw),target_temp);
 #ifdef PIDTEMP
 				//        Serial.println(heater_duty);
-				printf("%d\r\n",heater_duty);
+				// printf("%d\r\n",heater_duty);
 #else
 #if (HEATER_0_PIN > -1)
 				if(READ(HEATER_0_PIN))
 					//            Serial.println(255);
-					printf("%d\r\n",255);
+					// printf("%d\r\n",255);
 				else
 					//            Serial.println(0);
-					printf("%d\r\n",0);
+					// printf("%d\r\n",0);
 #else
 				//          Serial.println(0);
-				printf("%d\r\n",0);
+				// printf("%d\r\n",0);
 #endif
 #endif
 			}
 #if THERMISTORBED!=0
 			else
 			{
-				printf(" %d %d",analog2tempBed(current_bed_raw),target_bed_raw);
+				// printf(" %d %d",analog2tempBed(current_bed_raw),target_bed_raw);
 				//        showString(PSTR(" "));
 				//        Serial.print(analog2tempBed(current_bed_raw));
 				//        showString(PSTR(" "));
@@ -577,15 +577,16 @@ void manage_heater(XSysMon *SysMonInstPtr)
 				//        showString(PSTR(" "));
 #if (HEATER_1_PIN > -1)
 				//          if(READ(HEATER_1_PIN))
-				if(analogRead(SysMonInstPtr, 13))
+				if(analogRead(SysMonInstPtr, 13)){
 					//            Serial.println(255);
-					printf("%d\r\n",255);
-				else
-					printf("%d\r\n",0);
+					// printf("%d\r\n",255);
+				}else{
+					// printf("%d\r\n",0);
 				//            Serial.println(0);
+				}
 #else
 				//  Serial.println(0);
-				printf("%d\r\n",0);
+				// printf("%d\r\n",0);
 #endif
 			}
 #endif

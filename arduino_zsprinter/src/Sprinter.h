@@ -159,8 +159,8 @@ void log_uint(char* message, unsigned int value);
 void log_ulong(char* message, unsigned long value);
 #endif
 
-// void inverse_kinematics(const float cartesian[3]);
-void inverse_kinematics(volatile float cartesian[3]);
+void inverse_kinematics(const float cartesian[3]);
+// void inverse_kinematics(volatile float cartesian[3]);
 void initializeXADC();
 
 u32 millis();
