@@ -78,6 +78,9 @@
 const bool X_ENDSTOP_INVERT = false;
 const bool Y_ENDSTOP_INVERT = false;
 const bool Z_ENDSTOP_INVERT = false;
+// const bool X_ENDSTOP_INVERT = true;
+// const bool Y_ENDSTOP_INVERT = true;
+// const bool Z_ENDSTOP_INVERT = true;
 
 // This determines the communication speed of the printer
 #define BAUDRATE 115200

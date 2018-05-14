@@ -215,6 +215,7 @@ static int pulse_status = 0;
 static XTmrCtr TimerInstancePtr;
 static XTmrCtr TimerInstancePtr2;
 static XTmrCtr TimerInstancePtr3;
+static XTmrCtr TimerInstancePtr4;
 
 #define SYSMON_DEVICE_ID XPAR_SYSMON_0_DEVICE_ID //ID of xadc_wiz_0
 #define XSysMon_RawToExtVoltage(AdcData) ((((float)(AdcData))*(1.0f))/65536.0f) //(ADC 16bit result)/16/4096 = (ADC 16bit result)/65536
@@ -430,6 +431,7 @@ float delta[3];
 //long timediff = 0;
 
 bool is_homing = false;
+int homing_status = 0;
 
 //experimental feedrate calc
 //float d = 0;
@@ -505,6 +507,35 @@ static unsigned char G92_reset_previous_speed = 0;
 static float junction_deviation = 0.1;
 static float max_E_feedrate_calc = MAX_RETRACT_FEEDRATE;
 static bool retract_feedrate_aktiv = false;
+
+  static block_t *current_block;  // A pointer to the block currently being traced
+
+  // Variables used by The Stepper Driver Interrupt
+  static unsigned char out_bits;        // The next stepping-bits to be output
+  static long counter_x,       // Counter variables for the bresenham line tracer
+  counter_y, counter_z, counter_e;
+  static unsigned long step_events_completed; // The number of step events executed in the current block
+#ifdef ADVANCE
+  static long advance_rate, advance, final_advance = 0;
+  static short old_advance = 0;
+#endif
+  static short e_steps;
+  static unsigned char busy = false; // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
+  static long acceleration_time, deceleration_time;
+  static unsigned short acc_step_rate; // needed for deceleration start point
+  static char step_loops;
+  static unsigned short OCR1A_nominal;
+
+
+  static bool old_x_min_endstop = false;
+  static bool old_x_max_endstop = false;
+  static bool old_y_min_endstop = false;
+  static bool old_y_max_endstop = false;
+  static bool old_z_min_endstop = false;
+  static bool old_z_max_endstop = false;
+
+  int mycounter = 0;
+  int mycounter2 = 0;
 
 //------------------------------------------------
 //Init the SD card 
@@ -812,37 +843,12 @@ void showString (char *s)
 }
 
 void initializeOLED(){
-  SeeedOled.init();  //initialze SEEED OLED display
-  SeeedOled.clearDisplay();          //clear the screen and set start position to top left corn    er
-  SeeedOled.setNormalDisplay();      //Set display to normal mode (i.e non-inverse mode)
-  SeeedOled.setPageMode();           //Set addressing mode to Page Mode
-  SeeedOled.setTextXY(0,0);          //Set the cursor to Xth Page, Yth Column
-  SeeedOled.putString("ZSprinter2"); //Print the String
-  // max_software_endstops=true;
-  // is_homing=false;
-  // comment_mode = false;
-  // bufindr = 0;
-  // bufindw = 0;
-  // buflen = 0;
-  // for(int i=0;i<4;i++){
-  //  position[i] = 0;
-  // }
-  // for(int i=0;i<4;i++){
-  //  target[i] = 0;
-  // }
-  // for(int i=0;i<4;i++){
-  //  destination[i] = 0;
-  // }
-  // for(int i=0;i<4;i++){
-  //  current_position[i] = 0;
-  // }
-  // if(!comment_mode){
-  //   SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
-  //   SeeedOled.putString("f"); //Print the String
-  // } else {
-  //   SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
-  //   SeeedOled.putString("t"); //Print the String
-  // }
+  // SeeedOled.init();  //initialze SEEED OLED display
+  // SeeedOled.clearDisplay();          //clear the screen and set start position to top left corn    er
+  // SeeedOled.setNormalDisplay();      //Set display to normal mode (i.e non-inverse mode)
+  // SeeedOled.setPageMode();           //Set addressing mode to Page Mode
+  // SeeedOled.setTextXY(0,0);          //Set the cursor to Xth Page, Yth Column
+  // SeeedOled.putString("ZSprinter2"); //Print the String
 }
 
 //------------------------------------------------
@@ -859,7 +865,7 @@ void setup() {
   // showString("start\r\n");
 
   MAILBOX_CMD_ADDR = 0x0;
-  initializeOLED();
+  // initializeOLED();
 
   initializeGPIO();
   initializeAxiTimer();
@@ -1113,16 +1119,16 @@ void loop() {
       if (cmd==PRINT_STRING) {
         get_command_mailbox();
 
-        SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
-        SeeedOled.putString(current_command); //Print the String
+        // SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
+        // SeeedOled.putString(current_command); //Print the String
         comment_mode = false; //this is required!!
 
         for(int i=0;i<current_command_length;i++){
           parse_command(current_command[i],i);
         }
 
-        SeeedOled.setTextXY(2,0);          //Set the cursor to Xth Page, Yth Column
-        SeeedOled.putString(cmdbuffer[bufindr]); //Print the String
+        // SeeedOled.setTextXY(2,0);          //Set the cursor to Xth Page, Yth Column
+        // SeeedOled.putString(cmdbuffer[bufindr]); //Print the String
       }
       MAILBOX_CMD_ADDR = 0x0;
    }
@@ -1360,13 +1366,10 @@ void parse_command(char serial_char, int idx) {
   } else {
     if (serial_char == ';'){
       comment_mode = true;
-      }
+    }
     if (!comment_mode){
       cmdbuffer[bufindw][serial_count++] = serial_char;
-      //below code is not really necessary, but crashes when removed. Don't know why...
-        SeeedOled.setTextXY(0,0);          
-        SeeedOled.putChar('Z'); 
-      } 
+    } 
   }
 }
 
@@ -1462,7 +1465,7 @@ inline void line_to_axis_pos(int axis, float where, float fr_mm_m = 0.0) {
   current_position[axis] = where;
   feedrate_mm_m = (fr_mm_m != 0.0) ? fr_mm_m : homing_feedrate_mm_m[axis];
   plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], MMM_TO_MMS(feedrate_mm_m));
-  st_synchronize();
+  // st_synchronize(); // comment out -> cannot wait inside the AXI timer
   feedrate_mm_m = old_feedrate_mm_m;
 }
 
@@ -1597,7 +1600,8 @@ void dumpAllPins(){
 //------------------------------------------------
 // CHECK COMMAND AND CONVERT VALUES
 //------------------------------------------------
-FORCE_INLINE void process_commands() {
+// FORCE_INLINE void process_commands() {
+void process_commands() {
   unsigned long codenum; //throw away variable
   char *starpos = NULL;
 
@@ -1684,6 +1688,8 @@ FORCE_INLINE void process_commands() {
       current_position[X_AXIS] = current_position[Y_AXIS] = current_position[Z_AXIS] = 3.0 * (Z_MAX_LENGTH);
       feedrate_mm_m = 1.732 * homing_feedrate_mm_m[X_AXIS];
       line_to_current_position();
+
+      return;
       st_synchronize();
 
       //endstops.hit_on_purpose(); // clear endstop hit flags
@@ -3046,11 +3052,13 @@ FORCE_INLINE void process_commands() {
   }
 
   // Gets the current block. Returns NULL if buffer empty
-  FORCE_INLINE bool blocks_queued() {
+  // FORCE_INLINE bool blocks_queued() {
+  bool blocks_queued() {
     if (block_buffer_head == block_buffer_tail) {
       return false;
-    } else
+    } else {
       return true;
+    }
   }
 
   void check_axes_activity() {
@@ -3090,7 +3098,7 @@ FORCE_INLINE void process_commands() {
   // calculation the caller must also provide the physical length of the line in millimeters.
   void plan_buffer_line(float x, float y, float z, float e, float feed_rate) {
     // Calculate the buffer head after we push this byte
-    int next_buffer_head = next_block_index(block_buffer_head);
+    int next_buffer_head = next_block_index(block_buffer_head); // 0 to BLOCK_BUFFER_SIZE-1(=15)
 
     // If the buffer is full: good! That means we are well ahead of the robot.
     // Rest here until there is room in the buffer.
@@ -3432,9 +3440,11 @@ FORCE_INLINE void process_commands() {
 
 #endif // ADVANCE
 
+
     calculate_trapezoid_for_block(block,
         block->entry_speed / block->nominal_speed,
         safe_speed / block->nominal_speed);
+
 
     // Move buffer head
     block_buffer_head = next_buffer_head;
@@ -3443,6 +3453,7 @@ FORCE_INLINE void process_commands() {
     memcpy(position, target, sizeof(target)); // position[] = target[]
 
     planner_recalculate();
+
 #ifdef AUTOTEMP
     getHighESpeed();
 #endif
@@ -3719,31 +3730,6 @@ FORCE_INLINE void process_commands() {
 #define CHECK_ENDSTOPS
 #endif
 
-  static block_t *current_block;  // A pointer to the block currently being traced
-
-  // Variables used by The Stepper Driver Interrupt
-  static unsigned char out_bits;        // The next stepping-bits to be output
-  static long counter_x,       // Counter variables for the bresenham line tracer
-  counter_y, counter_z, counter_e;
-  static unsigned long step_events_completed; // The number of step events executed in the current block
-#ifdef ADVANCE
-  static long advance_rate, advance, final_advance = 0;
-  static short old_advance = 0;
-#endif
-  static short e_steps;
-  static unsigned char busy = false; // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
-  static long acceleration_time, deceleration_time;
-  static unsigned short acc_step_rate; // needed for deceleration start point
-  static char step_loops;
-  static unsigned short OCR1A_nominal;
-
-
-  static bool old_x_min_endstop = false;
-  static bool old_x_max_endstop = false;
-  static bool old_y_min_endstop = false;
-  static bool old_y_max_endstop = false;
-  static bool old_z_min_endstop = false;
-  static bool old_z_max_endstop = false;
 
   //         __________________________
   //        /|                        |\     _________________         ^
@@ -4250,35 +4236,14 @@ else if (e_steps > 0) {
 //  XScuGic InterruptController; /* Instance of the Interrupt Controller */
 //  static XScuGic_Config *GicConfig;/* The configuration parameters of the controller */
   XIntc IntcInstancePtr;
-  //void print(char *str);
-  //extern char inbyte(void);
+
   void Timer_InterruptHandler(void *data, u8 TmrCtrNumber)
   {
-    //  print(" Interrupt acknowledged \n \r ");
-    //  print("\r\n");
-    //  print("\r\n");
-    /*
-  intr_cntr++;
-  if(pulse_status==0){
-    if(intr_cntr>500) {
-      step();
-      pulse_status = 1;
-      intr_cntr = 0;
-    }
-  } else {
-    step();
-    pulse_status = 0;
-  }
-     */
-
-    //  XTmrCtr_Stop(data,TmrCtrNumber);
-    //  XTmrCtr_Reset(data,TmrCtrNumber);
-    //  XTmrCtr_Start(data,TmrCtrNumber);
-
     // If there is no current block, attempt to pop one from the buffer
     if (current_block == NULL) {
       // Anything in the buffer?
       current_block = plan_get_current_block();
+      mycounter2++;
       if (current_block != NULL) {
         trapezoid_generator_reset();
         counter_x = -(current_block->step_event_count >> 1);
@@ -4348,14 +4313,17 @@ else if (e_steps > 0) {
         {
 #if X_MAX_PIN > -1
           int x_max_pin_read = _CHK(XGpio_DiscreteRead(&ShieldInst, 1), X_MAX_PIN);
+          //x_max_endstop : false if LOW, true if HIGH
           bool x_max_endstop=( x_max_pin_read != X_ENDSTOP_INVERT);
           // bool x_max_endstop=(READ(X_MAX_PIN) != X_ENDSTOP_INVERT);
           if(x_max_endstop && old_x_max_endstop && (current_block->steps_x > 0)){
             // xil_printf("x max endstop hit!\r\n");
-            if(!is_homing)
+            if(!is_homing){
               endstop_x_hit=true;
-            else
+            }
+            else {
               step_events_completed = current_block->step_event_count;
+            }
           }
           else
           {
@@ -4711,12 +4679,233 @@ else if (e_steps > 0) {
     }
   }
 
+  void Timer_InterruptHandler_Debug(void *data, u8 TmrCtrNumber){
+  	// SeeedOled.setTextXY(5,0);
+  	// SeeedOled.putString("h:");
+  	// SeeedOled.putNumber(block_buffer_head);
+  	// SeeedOled.setTextXY(5,4);
+  	// SeeedOled.putString("t:");
+  	// SeeedOled.putNumber(block_buffer_tail);
+  	// SeeedOled.setTextXY(5,8);
+  	// SeeedOled.putString("c:");
+  	// SeeedOled.putNumber(step_events_completed);
 
-  int mycounter = 0;
+  	// SeeedOled.setTextXY(6,0);
+  	// SeeedOled.putNumber(homing_status);
+  	// SeeedOled.setTextXY(6,1);
+  	// SeeedOled.putNumber(mycounter);
+  	// mycounter++;
+  	// SeeedOled.setTextXY(6,6);
+  	// SeeedOled.putNumber(mycounter2);
+  }
 
   void Timer_InterruptHandler3(void *data, u8 TmrCtrNumber)
   {
     //20Hz cycle; this is used as main loop (which is parallel to main) 
+  	if(is_homing){
+  		if(block_buffer_head==block_buffer_tail){ //pulse generation completed (alternative of st_synchronize)
+			int min_pin, max_pin, home_dir, max_length, home_bump_mm;
+  			float axis_homing_feedrate_mm_m;
+
+  			if(homing_status==0){ //X_AXIS 1st
+         		endstop_x_hit = false;
+                endstop_y_hit = false;
+                endstop_z_hit = false;
+                current_position[X_AXIS] = current_position[Y_AXIS] = current_position[Z_AXIS] = 0.0;
+
+                //Read X_AXIS settings
+                min_pin = X_MIN_PIN;
+                max_pin = X_MAX_PIN;
+                home_dir = X_HOME_DIR;
+                max_length = Z_MAX_LENGTH;
+                home_bump_mm = X_HOME_BUMP_MM;
+                axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
+
+                // Set the axis position as setup for the move
+                current_position[X_AXIS] = 0;
+                sync_plan_position();
+                // Move towards the endstop until an endstop is triggered
+                line_to_axis_pos(X_AXIS, 1.5 * max_length * home_dir);
+                homing_status++;
+            } else if(homing_status==1) {  //X_AXIS 2nd
+                //Read X_AXIS settings
+                min_pin = X_MIN_PIN;
+                max_pin = X_MAX_PIN;
+                home_dir = X_HOME_DIR;
+                max_length = Z_MAX_LENGTH;
+                home_bump_mm = X_HOME_BUMP_MM;
+                axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
+	
+            	current_position[X_AXIS] = 0;
+				sync_plan_position();
+  				// Move away from the endstop by the axis HOME_BUMP_MM
+  				line_to_axis_pos(X_AXIS, -home_bump_mm * home_dir);
+                homing_status++;
+            } else if(homing_status==2) { //X_AXIS 3rd
+                //Read X_AXIS settings
+                min_pin = X_MIN_PIN;
+                max_pin = X_MAX_PIN;
+                home_dir = X_HOME_DIR;
+                max_length = Z_MAX_LENGTH;
+                home_bump_mm = X_HOME_BUMP_MM;
+                axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
+	
+            	// Move slowly towards the endstop until triggered
+  				line_to_axis_pos(X_AXIS, 2 * home_bump_mm * home_dir, axis_homing_feedrate_mm_m / 10);
+  				// reset current_position to 0 to reflect hitting endpoint
+  				current_position[X_AXIS] = 0;
+  				sync_plan_position();
+  				// not necessary
+  				//set_axis_is_at_home(axis);
+  				//sync_plan_position_delta();
+  				sync_plan_position();
+  				destination[X_AXIS] = current_position[X_AXIS];
+    			endstop_x_hit = false; // clear endstop hit flags
+                homing_status++;
+            } else if(homing_status==3){ // Y_AXIS 1st
+                //Read Y_AXIS settings
+            	min_pin = Y_MIN_PIN;
+				max_pin = Y_MAX_PIN;
+    			home_dir = Y_HOME_DIR;
+    			max_length = Z_MAX_LENGTH;
+    			home_bump_mm = Y_HOME_BUMP_MM;
+    			axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
+
+    			// Set the axis position as setup for the move
+                current_position[Y_AXIS] = 0;
+                sync_plan_position();
+                // Move towards the endstop until an endstop is triggered
+                line_to_axis_pos(Y_AXIS, 1.5 * max_length * home_dir);
+                homing_status++;
+            } else if(homing_status==4) { // Y_AXIS 2nd
+            	//Read Y_AXIS settings
+            	min_pin = Y_MIN_PIN;
+				max_pin = Y_MAX_PIN;
+    			home_dir = Y_HOME_DIR;
+    			max_length = Z_MAX_LENGTH;
+    			home_bump_mm = Y_HOME_BUMP_MM;
+    			axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
+
+            	current_position[Y_AXIS] = 0;
+				sync_plan_position();
+  				// Move away from the endstop by the axis HOME_BUMP_MM
+  				line_to_axis_pos(Y_AXIS, -home_bump_mm * home_dir);
+                homing_status++;
+            } else if(homing_status==5) { // Y_AXIS 3rd
+            	//Read Y_AXIS settings
+            	min_pin = Y_MIN_PIN;
+				max_pin = Y_MAX_PIN;
+    			home_dir = Y_HOME_DIR;
+    			max_length = Z_MAX_LENGTH;
+    			home_bump_mm = Y_HOME_BUMP_MM;
+    			axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
+
+    			// Move slowly towards the endstop until triggered
+  				line_to_axis_pos(Y_AXIS, 2 * home_bump_mm * home_dir, axis_homing_feedrate_mm_m / 10);
+  				// reset current_position to 0 to reflect hitting endpoint
+  				current_position[Y_AXIS] = 0;
+  				sync_plan_position();
+  				// not necessary
+  				//set_axis_is_at_home(axis);
+  				//sync_plan_position_delta();
+  				sync_plan_position();
+  				destination[Y_AXIS] = current_position[Y_AXIS];
+    			endstop_y_hit = false; // clear endstop hit flags
+                homing_status++;
+            } else if(homing_status==6){ // Z_AXIS 1st
+            	//Read Z_AXIS settings
+            	min_pin = Z_MIN_PIN;
+			    max_pin = Z_MAX_PIN;
+    			home_dir = Z_HOME_DIR;
+    			max_length = Z_MAX_LENGTH;
+    			home_bump_mm = Z_HOME_BUMP_MM;
+    			axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
+
+    			// Set the axis position as setup for the move
+                current_position[Z_AXIS] = 0;
+                sync_plan_position();
+                // Move towards the endstop until an endstop is triggered
+                line_to_axis_pos(Z_AXIS, 1.5 * max_length * home_dir);
+
+                homing_status++;
+            } else if(homing_status==7){ // Z_AXIS 2nd 
+            	//Read Z_AXIS settings
+            	min_pin = Z_MIN_PIN;
+			    max_pin = Z_MAX_PIN;
+    			home_dir = Z_HOME_DIR;
+    			max_length = Z_MAX_LENGTH;
+    			home_bump_mm = Z_HOME_BUMP_MM;
+    			axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
+
+    			current_position[Z_AXIS] = 0;
+				sync_plan_position();
+  				// Move away from the endstop by the axis HOME_BUMP_MM
+  				line_to_axis_pos(Z_AXIS, -home_bump_mm * home_dir);
+
+                homing_status++;
+            } else if(homing_status==8){ // Z_AXIS 3rd
+            	//Read Z_AXIS settings
+            	min_pin = Z_MIN_PIN;
+			    max_pin = Z_MAX_PIN;
+    			home_dir = Z_HOME_DIR;
+    			max_length = Z_MAX_LENGTH;
+    			home_bump_mm = Z_HOME_BUMP_MM;
+    			axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
+
+    			// Move slowly towards the endstop until triggered
+  				line_to_axis_pos(Z_AXIS, 2 * home_bump_mm * home_dir, axis_homing_feedrate_mm_m / 10);
+  				// reset current_position to 0 to reflect hitting endpoint
+  				current_position[Z_AXIS] = 0;
+  				sync_plan_position();
+  				// not necessary
+  				//set_axis_is_at_home(axis);
+  				//sync_plan_position_delta();
+  				sync_plan_position();
+  				destination[Z_AXIS] = current_position[Z_AXIS];
+    			endstop_z_hit = false; // clear endstop hit flags
+
+                homing_status++;
+            } else if(homing_status==9){
+                // sync_plan_position_delta();
+                sync_plan_position();
+                // set the current position as top
+                // trigger sync_plan_position_delta() to exclude orthogonal coordinates
+                current_position[X_AXIS] = current_position[Y_AXIS] = 0.0;
+                current_position[Z_AXIS] = Z_MAX_POS;
+                destination[X_AXIS] = current_position[X_AXIS];
+                destination[Y_AXIS] = current_position[Y_AXIS];
+                destination[Z_AXIS] = current_position[Z_AXIS];
+                destination[E_AXIS] = current_position[E_AXIS];
+                inverse_kinematics(destination);
+                sync_plan_position_delta();
+
+                // step back to avoid the switch
+                destination[X_AXIS] = current_position[X_AXIS];
+                destination[Y_AXIS] = current_position[Y_AXIS];
+                destination[Z_AXIS] = current_position[Z_AXIS] - Z_HOME_BUMP_MM;
+                destination[E_AXIS] = current_position[E_AXIS];
+                inverse_kinematics(destination);
+                plan_buffer_line(delta[X_AXIS], delta[Y_AXIS],delta[Z_AXIS], destination[E_AXIS], feedrate_mm_m);
+                for (int i = 0; i < NUM_AXIS; i++) {
+                  current_position[i] = destination[i];
+                }
+                sync_plan_position_delta();
+
+          #ifdef ENDSTOPS_ONLY_FOR_HOMING
+                enable_endstops(false);
+          #endif
+
+                is_homing = false;
+                feedrate = saved_feedrate;
+                feedmultiply = saved_feedmultiply;
+
+                previous_millis_cmd = millis();
+
+            	homing_status = 0;
+            }
+        }
+  	}
+
     if(buflen) {
   // #ifdef SDSUPPORT
   //     if(savetosd)
@@ -4750,17 +4939,16 @@ else if (e_steps > 0) {
         bufindr = 0;
     }
 
-
-// heater is not checked, so comment it out
-/*
-    //check heater every n milliseconds
-    manage_heater(SysMonInstPtr);
-    manage_inactivity(1);
-  #if (MINIMUM_FAN_START_SPEED > 0)
-    manage_fan_start_speed();
-  #endif
-*/
-}
+  // heater is not checked, so comment it out
+  /*
+      //check heater every n milliseconds
+      manage_heater(SysMonInstPtr);
+      manage_inactivity(1);
+    #if (MINIMUM_FAN_START_SPEED > 0)
+      manage_fan_start_speed();
+    #endif
+  */
+  }
 
   void initSteppers(){
     //no use of enable pin
@@ -4821,7 +5009,7 @@ else if (e_steps > 0) {
     int xStatus = XTmrCtr_Initialize(&TimerInstancePtr,XPAR_TMRCTR_0_DEVICE_ID);
     if(XST_SUCCESS != xStatus){
       // print("TIMER INIT FAILED \n\r");
-      SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr1 ng");
+      // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr1 ng");
     }
 
     XTmrCtr_SetHandler(&TimerInstancePtr,
@@ -4844,7 +5032,7 @@ else if (e_steps > 0) {
     //**************************************************************************//
     xStatus = XTmrCtr_Initialize(&TimerInstancePtr2,XPAR_TMRCTR_1_DEVICE_ID);
     if(XST_SUCCESS != xStatus){
-      SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr2 ng");
+      // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr2 ng");
       // print("TIMER INIT2 FAILED \n\r");
     }
 
@@ -4882,7 +5070,7 @@ else if (e_steps > 0) {
 
     xStatus = XTmrCtr_Initialize(&TimerInstancePtr3,XPAR_TMRCTR_2_DEVICE_ID);
     if(XST_SUCCESS != xStatus){
-      SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr3 ng");
+      // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr3 ng");
       // print("TIMER3 INIT FAILED \n\r");
     }
 
@@ -4892,7 +5080,10 @@ else if (e_steps > 0) {
 
     XTmrCtr_SetResetValue(&TimerInstancePtr3,
         0, //Channel 0
+        // 0x64);//1MHz
+        // 0x186a0); //1kHz
         0x4c4b40); //20Hz 
+        // 0x2faf080); //2Hz
         // 0x5f5e100); //1Hz -> for debug
         //0x1312d00);//5Hz
 
@@ -4901,12 +5092,36 @@ else if (e_steps > 0) {
         (XTC_INT_MODE_OPTION | XTC_AUTO_RELOAD_OPTION | XTC_DOWN_COUNT_OPTION));//Timer3 is DOWN counter
 
     //**************************************************************************//
+    // Timer4 (debug)
+    //**************************************************************************//
+
+    // xStatus = XTmrCtr_Initialize(&TimerInstancePtr4,XPAR_TMRCTR_3_DEVICE_ID);
+    // if(XST_SUCCESS != xStatus){
+      // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr4 ng");
+      // print("TIMER3 INIT FAILED \n\r");
+    // }
+
+    // XTmrCtr_SetHandler(&TimerInstancePtr4,
+    //     Timer_InterruptHandler_Debug,
+    //     &TimerInstancePtr4);
+
+    // XTmrCtr_SetResetValue(&TimerInstancePtr4,
+    //     0, //Channel 0
+    //     // 0x4c4b40); //20Hz 
+    //     // 0x5f5e100); //1Hz -> for debug
+    //     0x1312d00);//5Hz
+
+    // XTmrCtr_SetOptions(&TimerInstancePtr4,
+    //     0, //Channel 0
+    //     (XTC_INT_MODE_OPTION | XTC_AUTO_RELOAD_OPTION | XTC_DOWN_COUNT_OPTION));//Timer4 is DOWN counter
+
+    //**************************************************************************//
     // Connect INTC and Timers 
     //**************************************************************************//
 
     xStatus = XIntc_Initialize(&IntcInstancePtr, XPAR_INTC_0_DEVICE_ID);
     if (xStatus != XST_SUCCESS){
-      SeeedOled.setTextXY(0,0);SeeedOled.putString("initc");
+      // SeeedOled.setTextXY(0,0);SeeedOled.putString("initc");
       // print("intc init error\n\r");
     }
 
@@ -4914,31 +5129,39 @@ else if (e_steps > 0) {
         (XInterruptHandler)XTmrCtr_InterruptHandler,
         (void*)&TimerInstancePtr);
     if (xStatus != XST_SUCCESS){
-      SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr0c");
+      // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr0c");
       // print("connect timer0 error\n\r");
     }
     xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_1_VEC_ID,
         (XInterruptHandler)XTmrCtr_InterruptHandler,
         (void*)&TimerInstancePtr2);
     if (xStatus != XST_SUCCESS){
-      SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr1c");
+      // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr1c");
       // print("connect timer1 error\n\r");
     }
     xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_2_VEC_ID,
         (XInterruptHandler)XTmrCtr_InterruptHandler,
         (void*)&TimerInstancePtr3);
     if (xStatus != XST_SUCCESS){
-      SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr3c");
+      // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr3c");
       // print("connect timer3 error\n\r");
     }
+    // xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_3_VEC_ID,
+    //     (XInterruptHandler)XTmrCtr_InterruptHandler,
+    //     (void*)&TimerInstancePtr4);
+    // if (xStatus != XST_SUCCESS){
+    //   // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr4c");
+    //   // print("connect timer3 error\n\r");
+    // }
     xStatus = XIntc_Start(&IntcInstancePtr, XIN_REAL_MODE);
     if (xStatus != XST_SUCCESS){
-      SeeedOled.setTextXY(0,0);SeeedOled.putString("intc");
+      // SeeedOled.setTextXY(0,0);SeeedOled.putString("intc");
       // print("intc start error\n\r");
     }
     XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_0_VEC_ID);
     XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_1_VEC_ID);
     XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_2_VEC_ID);
+    // XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_3_VEC_ID);
     microblaze_enable_interrupts();
 
     XTmrCtr_Start(&TimerInstancePtr,0);
@@ -4949,7 +5172,7 @@ else if (e_steps > 0) {
     // print("AXI timer2 - timer1 start \n\r");
     XTmrCtr_Start(&TimerInstancePtr3,0);
     // print("AXI timer3 start \n\r");
-
+    // XTmrCtr_Start(&TimerInstancePtr4,0);
   }
 
   void st_init() {
@@ -4997,12 +5220,13 @@ else if (e_steps > 0) {
   // Block until all buffered steps are executed
   void st_synchronize() {
     while (blocks_queued()) {
-      //manage_heater();
-      manage_heater(SysMonInstPtr);
-      manage_inactivity(1);
-#if (MINIMUM_FAN_START_SPEED > 0)
-      manage_fan_start_speed();
-#endif
+    // while (block_buffer_head != block_buffer_tail){
+    // manage_heater();
+//       manage_heater(SysMonInstPtr);
+//       manage_inactivity(1);
+// #if (MINIMUM_FAN_START_SPEED > 0)
+//       manage_fan_start_speed();
+// #endif
     }
   }
 
