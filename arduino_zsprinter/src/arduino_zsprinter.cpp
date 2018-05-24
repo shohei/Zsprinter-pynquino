@@ -432,6 +432,7 @@ float delta[3];
 
 bool is_homing = false;
 int homing_status = 0;
+bool clear_to_send = true;
 
 //experimental feedrate calc
 //float d = 0;
@@ -536,6 +537,19 @@ static bool retract_feedrate_aktiv = false;
 
   int mycounter = 0;
   int mycounter2 = 0;
+
+  #define BUFLEN_DATA_ADDR 100
+  #define X_DATA_ADDR 101
+  #define Y_DATA_ADDR 102
+  #define Z_DATA_ADDR 103
+  #define E_DATA_ADDR 104
+  #define TEMP_DATA_ADDR 105
+  #define ENDSTOP_X_ADDR 106
+  #define ENDSTOP_Y_ADDR 107
+  #define ENDSTOP_Z_ADDR 108
+  #define BUFLEN_ACCUM_DATA_ADDR 109
+  #define BUFLEN_ACCUM_FINISHED_DATA_ADDR 110
+  #define NEXT_BUFFER_HEAD_ADDR 111
 
 //------------------------------------------------
 //Init the SD card 
@@ -843,12 +857,12 @@ void showString (char *s)
 }
 
 void initializeOLED(){
-  // SeeedOled.init();  //initialze SEEED OLED display
-  // SeeedOled.clearDisplay();          //clear the screen and set start position to top left corn    er
-  // SeeedOled.setNormalDisplay();      //Set display to normal mode (i.e non-inverse mode)
-  // SeeedOled.setPageMode();           //Set addressing mode to Page Mode
-  // SeeedOled.setTextXY(0,0);          //Set the cursor to Xth Page, Yth Column
-  // SeeedOled.putString("ZSprinter2"); //Print the String
+  SeeedOled.init();  //initialze SEEED OLED display
+  SeeedOled.clearDisplay();          //clear the screen and set start position to top left corn    er
+  SeeedOled.setNormalDisplay();      //Set display to normal mode (i.e non-inverse mode)
+  SeeedOled.setPageMode();           //Set addressing mode to Page Mode
+  SeeedOled.setTextXY(0,0);          //Set the cursor to Xth Page, Yth Column
+  SeeedOled.putString("ZSprinter2"); //Print the String
 }
 
 //------------------------------------------------
@@ -865,7 +879,11 @@ void setup() {
   // showString("start\r\n");
 
   MAILBOX_CMD_ADDR = 0x0;
-  // initializeOLED();
+  MAILBOX_DATA(BUFLEN_DATA_ADDR) = 0;
+  MAILBOX_DATA(BUFLEN_ACCUM_DATA_ADDR) = 0;
+  MAILBOX_DATA(BUFLEN_ACCUM_FINISHED_DATA_ADDR) = 0;
+  MAILBOX_DATA(NEXT_BUFFER_HEAD_ADDR) = 0;
+  initializeOLED();
 
   initializeGPIO();
   initializeAxiTimer();
@@ -1112,11 +1130,12 @@ void get_command_mailbox(){
 // }
 
 void loop() {
-  while( MAILBOX_CMD_ADDR==0 ); // Wait until any of the conditions satisfied
+  while( MAILBOX_CMD_ADDR==0 || clear_to_send==false); // Wait until any of the conditions satisfied
 
   if(MAILBOX_CMD_ADDR!=0){
       u32 cmd = MAILBOX_CMD_ADDR;
       if (cmd==PRINT_STRING) {
+      	clear_to_send = false;
         get_command_mailbox();
 
         // SeeedOled.setTextXY(1,0);          //Set the cursor to Xth Page, Yth Column
@@ -1130,7 +1149,7 @@ void loop() {
         // SeeedOled.setTextXY(2,0);          //Set the cursor to Xth Page, Yth Column
         // SeeedOled.putString(cmdbuffer[bufindr]); //Print the String
       }
-      MAILBOX_CMD_ADDR = 0x0;
+      // MAILBOX_CMD_ADDR = 0x0;
    }
 }
 
@@ -1343,6 +1362,8 @@ void parse_command(char serial_char, int idx) {
                                    + 1], NULL)))) {
       case 0:
       case 1:
+      // clear_to_send = true;
+      // MAILBOX_CMD_ADDR = 0x0;
         // showString("ok\r\n");
         ////Serial.println("ok");
         // printf("ok\r\n");
@@ -1360,6 +1381,9 @@ void parse_command(char serial_char, int idx) {
     if (bufindw == BUFSIZE)
       bufindw = 0;
     buflen += 1;
+    MAILBOX_DATA(BUFLEN_DATA_ADDR) = buflen;
+    int buflen_accum = MAILBOX_DATA(BUFLEN_ACCUM_DATA_ADDR);
+    MAILBOX_DATA(BUFLEN_ACCUM_DATA_ADDR) = buflen_accum + 1;
 
     comment_mode = false; //for new command
     serial_count = 0; //clear buffer
@@ -1619,7 +1643,7 @@ void process_commands() {
       get_coordinates(); // For X Y Z E F
       prepare_move();
       previous_millis_cmd = millis();
-      //ClearToSend();
+      ClearToSend();
       return;
       //break;
 #ifdef USE_ARC_FUNCTION
@@ -1690,55 +1714,55 @@ void process_commands() {
       line_to_current_position();
 
       return;
-      st_synchronize();
+//       st_synchronize();
 
-      //endstops.hit_on_purpose(); // clear endstop hit flags
-      endstop_x_hit = false;
-      endstop_y_hit = false;
-      endstop_z_hit = false;
-      current_position[X_AXIS] = current_position[Y_AXIS] = current_position[Z_AXIS] = 0.0;
+//       //endstops.hit_on_purpose(); // clear endstop hit flags
+//       endstop_x_hit = false;
+//       endstop_y_hit = false;
+//       endstop_z_hit = false;
+//       current_position[X_AXIS] = current_position[Y_AXIS] = current_position[Z_AXIS] = 0.0;
 
-      homeaxis(X_AXIS);
-      homeaxis(Y_AXIS);
-      homeaxis(Z_AXIS);
+//       homeaxis(X_AXIS);
+//       homeaxis(Y_AXIS);
+//       homeaxis(Z_AXIS);
 
-      // sync_plan_position_delta();
-      sync_plan_position();
+//       // sync_plan_position_delta();
+//       sync_plan_position();
 
-      // set the current position as top
-      // trigger sync_plan_position_delta() to exclude orthogonal coordinates
-      current_position[X_AXIS] = current_position[Y_AXIS] = 0.0;
-      current_position[Z_AXIS] = Z_MAX_POS;
-      destination[X_AXIS] = current_position[X_AXIS];
-      destination[Y_AXIS] = current_position[Y_AXIS];
-      destination[Z_AXIS] = current_position[Z_AXIS];
-      destination[E_AXIS] = current_position[E_AXIS];
-      inverse_kinematics(destination);
-      sync_plan_position_delta();
+//       // set the current position as top
+//       // trigger sync_plan_position_delta() to exclude orthogonal coordinates
+//       current_position[X_AXIS] = current_position[Y_AXIS] = 0.0;
+//       current_position[Z_AXIS] = Z_MAX_POS;
+//       destination[X_AXIS] = current_position[X_AXIS];
+//       destination[Y_AXIS] = current_position[Y_AXIS];
+//       destination[Z_AXIS] = current_position[Z_AXIS];
+//       destination[E_AXIS] = current_position[E_AXIS];
+//       inverse_kinematics(destination);
+//       sync_plan_position_delta();
 
-      // step back to avoid the switch
-      destination[X_AXIS] = current_position[X_AXIS];
-      destination[Y_AXIS] = current_position[Y_AXIS];
-      destination[Z_AXIS] = current_position[Z_AXIS] - Z_HOME_BUMP_MM;
-      destination[E_AXIS] = current_position[E_AXIS];
-      inverse_kinematics(destination);
-      plan_buffer_line(delta[X_AXIS], delta[Y_AXIS],delta[Z_AXIS], destination[E_AXIS], feedrate_mm_m);
-      for (int i = 0; i < NUM_AXIS; i++) {
-        current_position[i] = destination[i];
-      }
-      sync_plan_position_delta();
+//       // step back to avoid the switch
+//       destination[X_AXIS] = current_position[X_AXIS];
+//       destination[Y_AXIS] = current_position[Y_AXIS];
+//       destination[Z_AXIS] = current_position[Z_AXIS] - Z_HOME_BUMP_MM;
+//       destination[E_AXIS] = current_position[E_AXIS];
+//       inverse_kinematics(destination);
+//       plan_buffer_line(delta[X_AXIS], delta[Y_AXIS],delta[Z_AXIS], destination[E_AXIS], feedrate_mm_m);
+//       for (int i = 0; i < NUM_AXIS; i++) {
+//         current_position[i] = destination[i];
+//       }
+//       sync_plan_position_delta();
 
 
-#ifdef ENDSTOPS_ONLY_FOR_HOMING
-      enable_endstops(false);
-#endif
+// #ifdef ENDSTOPS_ONLY_FOR_HOMING
+//       enable_endstops(false);
+// #endif
 
-      is_homing = false;
-      feedrate = saved_feedrate;
-      feedmultiply = saved_feedmultiply;
+//       is_homing = false;
+//       feedrate = saved_feedrate;
+//       feedmultiply = saved_feedmultiply;
 
-      previous_millis_cmd = millis();
-      break;
+//       previous_millis_cmd = millis();
+//       break;
     case 90: // G90
       relative_mode = false;
       break;
@@ -1988,6 +2012,8 @@ void process_commands() {
       bedtempC = analog2tempBed(current_bed_raw);
 #endif
 #if (TEMP_0_PIN > -1) || defined (HEATER_USES_MAX6675) || defined HEATER_USES_AD595
+      clear_to_send = true;
+      MAILBOX_CMD_ADDR = 0x0;
       //showString(PSTR("ok T:"));
       //Serial.print(hotendtC);
       //printf("current_raw:%d\r\n",current_raw);
@@ -2215,6 +2241,8 @@ void process_commands() {
       //        }
       break;
     case 93: // M93 show current axis steps.
+    clear_to_send = true;
+    MAILBOX_CMD_ADDR = 0x0;
       // printf("ok \r\n");
       // printf("X:%dY:%dZ:%dE:%d\r\n",axis_steps_per_unit[0],axis_steps_per_unit[1],axis_steps_per_unit[2],axis_steps_per_unit[3]);
       //showString(PSTR("ok "));
@@ -2519,6 +2547,8 @@ void process_commands() {
     if(fromsd[bufindr])
       return;
 #endif
+  clear_to_send = true;
+  MAILBOX_CMD_ADDR = 0x0;
     // printf("ok\r\n");
     //  //showString(PSTR("ok\r\n"));
     ////Serial.println("ok");
@@ -3102,6 +3132,7 @@ void process_commands() {
 
     // If the buffer is full: good! That means we are well ahead of the robot.
     // Rest here until there is room in the buffer.
+    /*  comment out: since we cannot run this code inside the AXI timer
     while (block_buffer_tail == next_buffer_head) {
       //manage_heater();
       manage_heater(SysMonInstPtr);
@@ -3110,6 +3141,7 @@ void process_commands() {
       manage_fan_start_speed();
 #endif
     }
+    */
 
     // The target position of the tool in absolute steps
     // Calculate target position in absolute steps
@@ -4660,6 +4692,10 @@ else if (e_steps > 0) {
       if (step_events_completed >= current_block->step_event_count) {
         current_block = NULL;
         plan_discard_current_block();
+
+        //free buffer
+        int buflen_accum_finished = MAILBOX_DATA(BUFLEN_ACCUM_FINISHED_DATA_ADDR); 
+        MAILBOX_DATA(BUFLEN_ACCUM_FINISHED_DATA_ADDR) = buflen_accum_finished + 1;
       }
     }
   }
@@ -4902,41 +4938,52 @@ else if (e_steps > 0) {
                 previous_millis_cmd = millis();
 
             	homing_status = 0;
+            	clear_to_send = true;
+            	MAILBOX_CMD_ADDR = 0x0;
             }
         }
   	}
 
-    if(buflen) {
-  // #ifdef SDSUPPORT
-  //     if(savetosd)
-  //     {
-  //       if(strstr(cmdbuffer[bufindr],"M29") == NULL)
-  //       {
-  //         write_command(cmdbuffer[bufindr]);
-  //         // printf("ok\r\n");
-  //         //            //showString(PSTR("ok\r\n"));
-  //       }
-  //       else
-  //       {
-  //         file.sync();
-  //         file.close();
-  //         savetosd = false;
-  //         // printf("Done saving file.\r\n");
-  //         //            //showString(PSTR("Done saving file.\r\n"));
-  //       }
-  //     }
-  //     else
-  //     {
-  //       process_commands();
-  //     }
-  // #else
-      process_commands();
-  // #endif
-  
-      buflen = (buflen - 1);
-      bufindr++;
-      if (bufindr == BUFSIZE)
-        bufindr = 0;
+  	int next_buffer_head_temp = block_buffer_head + 1;
+    if (next_buffer_head_temp == BLOCK_BUFFER_SIZE) {
+      next_buffer_head_temp = 0;
+    }
+    MAILBOX_DATA(NEXT_BUFFER_HEAD_ADDR) = next_buffer_head_temp;
+
+    if (block_buffer_tail != next_buffer_head_temp) {
+       if(buflen) {
+     // #ifdef SDSUPPORT
+     //     if(savetosd)
+     //     {
+     //       if(strstr(cmdbuffer[bufindr],"M29") == NULL)
+     //       {
+     //         write_command(cmdbuffer[bufindr]);
+     //         // printf("ok\r\n");
+     //         //            //showString(PSTR("ok\r\n"));
+     //       }
+     //       else
+     //       {
+     //         file.sync();
+     //         file.close();
+     //         savetosd = false;
+     //         // printf("Done saving file.\r\n");
+     //         //            //showString(PSTR("Done saving file.\r\n"));
+     //       }
+     //     }
+     //     else
+     //     {
+     //       process_commands();
+     //     }
+     // #else
+         process_commands();
+     // #endif
+     
+         buflen = (buflen - 1);
+         MAILBOX_DATA(BUFLEN_DATA_ADDR) = buflen;
+         bufindr++;
+         if (bufindr == BUFSIZE)
+           bufindr = 0;
+       }
     }
 
   // heater is not checked, so comment it out

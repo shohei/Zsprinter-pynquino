@@ -44,7 +44,8 @@
 #define STEPS_PER_ROTATION 200
 /** \brief Micro stepping rate of X, Y and Y tower stepper drivers */
 #define MICRO_STEPS 32 //DRV8825
-//#define MICRO_STEPS 16 //A4982
+// #define MICRO_STEPS 16 //A4982
+// #define MICRO_STEPS 8 //debug
 
 /** \brief Number of delta moves in each line. Moves that exceed this figure will be split into multiple lines.
   Increasing this figure can use a lot of memory since 7 bytes * size of line buffer * MAX_SELTA_SEGMENTS_PER_LINE
@@ -296,8 +297,10 @@ const int dropsegments=5; //everything with less than this number of steps will 
 //   #define BLOCK_BUFFER_SIZE 16
 //   #define BLOCK_BUFFER_MASK 0x0f
 // #else
-   #define BLOCK_BUFFER_SIZE 16
-   #define BLOCK_BUFFER_MASK 0x0f
+   #define BLOCK_BUFFER_SIZE 16 //default
+   #define BLOCK_BUFFER_MASK 0x0f //default
+   // #define BLOCK_BUFFER_SIZE 32 
+   // #define BLOCK_BUFFER_MASK 0x1f
 // #endif
 
 //-----------------------------------------------------------------------
