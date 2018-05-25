@@ -1,5 +1,5 @@
 from . import Arduino 
-
+import struct
 
 __author__ = "S.Aoki"
 __copyright__ = "Copyright 2018, Shokara"
@@ -13,7 +13,7 @@ X_DATA_ADDR = 101
 Y_DATA_ADDR = 102
 Z_DATA_ADDR = 103
 E_DATA_ADDR = 104
-TEMP_DATA_ADDR = 105
+HOTEND_TEMP_ADDR = 105
 ENDSTOP_X_ADDR = 106
 ENDSTOP_Y_ADDR = 107
 ENDSTOP_Z_ADDR = 108
@@ -98,3 +98,8 @@ class Arduino_Zsprinter(object):
         next_buffer_head = self.microblaze.read_mailbox(4*NEXT_BUFFER_HEAD_ADDR,4)
         return next_buffer_head 
 
+    def read_hotend_temp(self):
+        hotend_temp_raw = int(self.microblaze.read_mailbox(4*HOTEND_TEMP_ADDR,1))
+        s = struct.pack('>L', hotend_temp_raw)
+        hotend_temp = struct.unpack('>f', s)[0]
+        return hotend_temp 

@@ -543,7 +543,7 @@ static bool retract_feedrate_aktiv = false;
   #define Y_DATA_ADDR 102
   #define Z_DATA_ADDR 103
   #define E_DATA_ADDR 104
-  #define TEMP_DATA_ADDR 105
+  #define HOTEND_TEMP_ADDR 105
   #define ENDSTOP_X_ADDR 106
   #define ENDSTOP_Y_ADDR 107
   #define ENDSTOP_Z_ADDR 108
@@ -883,6 +883,11 @@ void setup() {
   MAILBOX_DATA(BUFLEN_ACCUM_DATA_ADDR) = 0;
   MAILBOX_DATA(BUFLEN_ACCUM_FINISHED_DATA_ADDR) = 0;
   MAILBOX_DATA(NEXT_BUFFER_HEAD_ADDR) = 0;
+  MAILBOX_DATA_FLOAT(X_DATA_ADDR) = 0;
+  MAILBOX_DATA_FLOAT(Y_DATA_ADDR) = 0;
+  MAILBOX_DATA_FLOAT(Z_DATA_ADDR) = 0;
+  MAILBOX_DATA_FLOAT(E_DATA_ADDR) = 0;
+  MAILBOX_DATA_FLOAT(HOTEND_TEMP_ADDR) = 0;
   initializeOLED();
 
   initializeGPIO();
@@ -1794,7 +1799,6 @@ void process_commands() {
   }
 
   else if (code_seen('M')) {
-
     switch ((int) code_value()) {
 #ifdef SDSUPPORT
 
@@ -2012,12 +2016,13 @@ void process_commands() {
       bedtempC = analog2tempBed(current_bed_raw);
 #endif
 #if (TEMP_0_PIN > -1) || defined (HEATER_USES_MAX6675) || defined HEATER_USES_AD595
-      clear_to_send = true;
-      MAILBOX_CMD_ADDR = 0x0;
       //showString(PSTR("ok T:"));
       //Serial.print(hotendtC);
       //printf("current_raw:%d\r\n",current_raw);
       // printf("ok T:%d",hotendtC);
+      MAILBOX_DATA_FLOAT(HOTEND_TEMP_ADDR) = hotendtC;
+      clear_to_send = true;
+      MAILBOX_CMD_ADDR = 0x0;
 #ifdef PIDTEMP
       //showString(PSTR(" @:"));
       //Serial.print(heater_duty);
@@ -2274,6 +2279,10 @@ void process_commands() {
       //Serial.print(current_position[2]);
       //showString(PSTR("E:"));
       //Serial.println(current_position[3]);
+      MAILBOX_DATA_FLOAT(X_DATA_ADDR) = current_position[0];
+      MAILBOX_DATA_FLOAT(Y_DATA_ADDR) = current_position[1];
+      MAILBOX_DATA_FLOAT(Z_DATA_ADDR) = current_position[2];
+      MAILBOX_DATA_FLOAT(E_DATA_ADDR) = current_position[3];
       break;
 
     case 119: // M119
