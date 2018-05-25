@@ -21,6 +21,11 @@ BUFLEN_ACCUM_DATA_ADDR = 109
 BUFLEN_ACCUM_FINISHED_DATA_ADDR = 110
 NEXT_BUFFER_HEAD_ADDR = 111
 
+def _reg2float(reg):
+    s = struct.pack('>L', reg)
+    f = struct.unpack('>f', s)[0]
+    return f 
+
 class Arduino_Zsprinter(object):
     """This class controls an Zsprinter.
     
@@ -44,7 +49,7 @@ class Arduino_Zsprinter(object):
             
         """
         self.microblaze = Arduino(mb_info, ARDUINO_OLED_PROGRAM)
-            
+
     def write(self, text, x=0, y=0):
         """Write a new text string on the OLED.
 
@@ -100,6 +105,16 @@ class Arduino_Zsprinter(object):
 
     def read_hotend_temp(self):
         hotend_temp_raw = int(self.microblaze.read_mailbox(4*HOTEND_TEMP_ADDR,1))
-        s = struct.pack('>L', hotend_temp_raw)
-        hotend_temp = struct.unpack('>f', s)[0]
-        return hotend_temp 
+        return _reg2float(hotend_temp_raw)
+
+    def read_current_position(self):
+        current_position_x_raw = int(self.microblaze.read_mailbox(4*X_DATA_ADDR,1))
+        current_position_y_raw = int(self.microblaze.read_mailbox(4*Y_DATA_ADDR,1))
+        current_position_z_raw = int(self.microblaze.read_mailbox(4*Z_DATA_ADDR,1))
+        current_position_e_raw = int(self.microblaze.read_mailbox(4*E_DATA_ADDR,1))
+        x = _reg2float(current_position_x_raw)
+        y = _reg2float(current_position_y_raw)
+        z = _reg2float(current_position_z_raw)
+        e = _reg2float(current_position_e_raw)
+        return [x,y,z,e] 
+
