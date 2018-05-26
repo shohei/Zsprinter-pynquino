@@ -538,6 +538,11 @@ static bool retract_feedrate_aktiv = false;
   int mycounter = 0;
   int mycounter2 = 0;
 
+  unsigned long codenum_heater; 
+  bool waiting_until_setpoint = false;
+  bool target_direction_heating;
+
+  // DATA_ADDR definitions for BRAM
   #define BUFLEN_DATA_ADDR 100
   #define X_DATA_ADDR 101
   #define Y_DATA_ADDR 102
@@ -550,6 +555,7 @@ static bool retract_feedrate_aktiv = false;
   #define BUFLEN_ACCUM_DATA_ADDR 109
   #define BUFLEN_ACCUM_FINISHED_DATA_ADDR 110
   #define NEXT_BUFFER_HEAD_ADDR 111
+
 
 //------------------------------------------------
 //Init the SD card 
@@ -2054,33 +2060,39 @@ void process_commands() {
 #endif
       return;
       //break;
-    case 109: { // M109 - Wait for extruder heater to reach target.
-#ifdef CHAIN_OF_COMMAND
-      st_synchronize(); // wait for all movements to finish
-#endif
+    case 109: 
+    //{ // M109 - Wait for extruder heater to reach target.
+// #ifdef CHAIN_OF_COMMAND
+//       st_synchronize(); // wait for all movements to finish
+// #endif
       if (code_seen('S'))
         target_raw = temp2analogh(target_temp = code_value());
-#ifdef WATCHPERIOD
-      if(target_raw>current_raw)
-      {
-        watchmillis = max(1,millis());
-        watch_raw = current_raw;
-      }
-      else
-      {
-        watchmillis = 0;
-      }
-#endif
-      codenum = millis();
+// #ifdef WATCHPERIOD
+//       if(target_raw>current_raw)
+//       {
+//         watchmillis = max(1,millis());
+//         watch_raw = current_raw;
+//       }
+//       else
+//       {
+//         watchmillis = 0;
+//       }
+// #endif
+      // codenum = millis();
+      codenum_heater = millis();
+      waiting_until_setpoint = true;
+      target_direction_heating = (current_raw < target_raw); // true if heating, false if cooling
+      return;
 
-      /* See if we are heating up or cooling down */
+      /*
+      // See if we are heating up or cooling down 
       bool target_direction = (current_raw < target_raw); // true if heating, false if cooling
 
 #ifdef TEMP_RESIDENCY_TIME
       long residencyStart;
       residencyStart = -1;
-      /* continue to loop until we have reached the target temp
-       _and_ until TEMP_RESIDENCY_TIME hasn't passed since we reached it */
+      // continue to loop until we have reached the target temp
+      // _and_ until TEMP_RESIDENCY_TIME hasn't passed since we reached it 
       while( (target_direction ? (current_raw < target_raw) : (current_raw > target_raw))
           || (residencyStart > -1 && (millis() - residencyStart) < TEMP_RESIDENCY_TIME*1000) ) {
 #else
@@ -2099,18 +2111,19 @@ void process_commands() {
 #if (MINIMUM_FAN_START_SPEED > 0)
           manage_fan_start_speed();
 #endif
-#ifdef TEMP_RESIDENCY_TIME
-          /* start/restart the TEMP_RESIDENCY_TIME timer whenever we reach target temp for the first time
-         or when current temp falls outside the hysteresis after target temp was reached */
-          if ( (residencyStart == -1 && target_direction && current_raw >= target_raw)
-              || (residencyStart == -1 && !target_direction && current_raw <= target_raw)
-              || (residencyStart > -1 && labs(analog2temp(current_raw) - analog2temp(target_raw)) > TEMP_HYSTERESIS) ) {
-            residencyStart = millis();
-          }
-#endif
+// #ifdef TEMP_RESIDENCY_TIME
+//          //start/restart the TEMP_RESIDENCY_TIME timer whenever we reach target temp for the first time
+//          //or when current temp falls outside the hysteresis after target temp was reached 
+//           if ( (residencyStart == -1 && target_direction && current_raw >= target_raw)
+//               || (residencyStart == -1 && !target_direction && current_raw <= target_raw)
+//               || (residencyStart > -1 && labs(analog2temp(current_raw) - analog2temp(target_raw)) > TEMP_HYSTERESIS) ) {
+//             residencyStart = millis();
+//           }
+// #endif
         }
       }
       break;
+    */ 
     case 190: // M190 - Wait for bed heater to reach target temperature.
 #ifdef CHAIN_OF_COMMAND
       st_synchronize(); // wait for all movements to finish
@@ -4953,6 +4966,22 @@ else if (e_steps > 0) {
         }
   	}
 
+  	if(waiting_until_setpoint){
+        if ((millis() - codenum_heater) > 1000) { //Print Temp Reading every 1 second while heating up/cooling down
+           bool still_waiting = target_direction_heating ? (current_raw < target_raw) : (current_raw > target_raw);
+           if(still_waiting) {
+             //showString(PSTR("T:"));
+             //Serial.println( analog2temp(current_raw) );
+             // printf("T:%d\r\n",analog2temp(current_raw));
+              codenum_heater = millis();
+           } else {
+           	 waiting_until_setpoint = false;
+           	 clear_to_send = true;
+             MAILBOX_CMD_ADDR = 0x0;	
+           }
+        }
+    }
+
   	int next_buffer_head_temp = block_buffer_head + 1;
     if (next_buffer_head_temp == BLOCK_BUFFER_SIZE) {
       next_buffer_head_temp = 0;
@@ -4996,14 +5025,17 @@ else if (e_steps > 0) {
     }
 
   // heater is not checked, so comment it out
-  /*
+  
       //check heater every n milliseconds
       manage_heater(SysMonInstPtr);
       manage_inactivity(1);
     #if (MINIMUM_FAN_START_SPEED > 0)
       manage_fan_start_speed();
     #endif
-  */
+
+    //update current temperature
+    MAILBOX_DATA_FLOAT(HOTEND_TEMP_ADDR) =  analog2temp(current_raw);
+
   }
 
   void initSteppers(){
