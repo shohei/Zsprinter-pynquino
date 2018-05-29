@@ -434,6 +434,8 @@ float delta[3];
 bool is_homing = false;
 int homing_status = 0;
 bool clear_to_send = true;
+bool wait_for_st_synchronize = false;
+float current_position_synchronize[NUM_AXIS] = {0.0, 0.0, 0.0, 0.0};
 
 //experimental feedrate calc
 //float d = 0;
@@ -1782,10 +1784,21 @@ void process_commands() {
       relative_mode = true;
       break;
     case 92: // G92
-//      if (!code_seen(axis_codes[E_AXIS])){
+     // if (!code_seen(axis_codes[E_AXIS])){
 //        st_synchronize();
-//      }
-
+         // for (int i = 0; i < NUM_AXIS; i++) {
+        //     current_position_synchronize[i] = current_position[i];
+        //     if (code_seen(axis_codes[i]))
+        //       current_position_synchronize[i] = code_value();
+        // }
+         // wait_for_st_synchronize = true;
+     // } else {
+        // for (int i = 0; i < NUM_AXIS; i++) {
+        //   if (code_seen(axis_codes[i]))
+        //     current_position[i] = code_value();
+        // }
+        // ClearToSend();
+     // }
       for (int i = 0; i < NUM_AXIS; i++) {
         if (code_seen(axis_codes[i]))
           current_position[i] = code_value();
@@ -1793,7 +1806,8 @@ void process_commands() {
 //      plan_set_position(current_position[X_AXIS],
 //          current_position[Y_AXIS], current_position[Z_AXIS],
 //          current_position[E_AXIS]);
-      break;
+     // return;
+    break;
     default:
 #ifdef SEND_WRONG_CMD_INFO
       //showString(PSTR("Unknown G-COM:"));
@@ -4557,7 +4571,8 @@ else if (e_steps > 0) {
             else {
               // WRITE(X_STEP_PIN, HIGH);}
               _SET(shields_data , STEP_X_PIN);
-              XGpio_DiscreteWrite(&ShieldInst, 1, shields_data);}
+              XGpio_DiscreteWrite(&ShieldInst, 1, shields_data);
+          }
             //hack for stepper motor driver
             wait_for_1_8us();
           } else
@@ -4578,7 +4593,8 @@ else if (e_steps > 0) {
             else {
               // WRITE(Y_STEP_PIN, HIGH);}
               _SET(shields_data , STEP_Y_PIN);
-              XGpio_DiscreteWrite(&ShieldInst, 1, shields_data);}
+              XGpio_DiscreteWrite(&ShieldInst, 1, shields_data);
+          }
             wait_for_1_8us();
           }
           else
@@ -4599,7 +4615,8 @@ else if (e_steps > 0) {
             else {
               // WRITE(Z_STEP_PIN, HIGH);}
               _SET(shields_data , STEP_Z_PIN);
-              XGpio_DiscreteWrite(&ShieldInst, 1, shields_data);}
+              XGpio_DiscreteWrite(&ShieldInst, 1, shields_data);
+          }
             wait_for_1_8us();
           }
           else
@@ -4739,16 +4756,6 @@ else if (e_steps > 0) {
   }
 
   void Timer_InterruptHandler_Debug(void *data, u8 TmrCtrNumber){
-  	// SeeedOled.setTextXY(5,0);
-  	// SeeedOled.putString("h:");
-  	// SeeedOled.putNumber(block_buffer_head);
-  	// SeeedOled.setTextXY(5,4);
-  	// SeeedOled.putString("t:");
-  	// SeeedOled.putNumber(block_buffer_tail);
-  	// SeeedOled.setTextXY(5,8);
-  	// SeeedOled.putString("c:");
-  	// SeeedOled.putNumber(step_events_completed);
-
   	// SeeedOled.setTextXY(6,0);
   	// SeeedOled.putNumber(homing_status);
   	// SeeedOled.setTextXY(6,1);
@@ -4965,7 +4972,8 @@ else if (e_steps > 0) {
             	MAILBOX_CMD_ADDR = 0x0;
             }
         }
-  	} else if(waiting_until_setpoint) {
+  	} 
+  	if (waiting_until_setpoint) {
         if ((millis() - codenum_heater) > 1000) { //Print Temp Reading every 1 second while heating up/cooling down
            bool still_waiting = target_direction_heating ? (current_raw < target_raw) : (current_raw > target_raw);
            if(still_waiting) {
@@ -4979,7 +4987,17 @@ else if (e_steps > 0) {
              MAILBOX_CMD_ADDR = 0x0;	
            }
         }
-    }
+  	} 
+  	// else if (wait_for_st_synchronize) {
+  	// 	if(block_buffer_head==block_buffer_tail){ //pulse generation completed (alternative of st_synchronize)
+   //        for (int i = 0; i < NUM_AXIS; i++) {
+   //            current_position[i] = current_position_synchronize[i];
+   //        }
+  	// 	  wait_for_st_synchronize = false;
+  	// 	  clear_to_send = true;
+  	// 	  MAILBOX_CMD_ADDR = 0x0;
+  	// 	}
+  	// }
 
   	int next_buffer_head_temp = block_buffer_head + 1;
     if (next_buffer_head_temp == BLOCK_BUFFER_SIZE) {
@@ -4987,6 +5005,7 @@ else if (e_steps > 0) {
     }
     MAILBOX_DATA(NEXT_BUFFER_HEAD_ADDR) = next_buffer_head_temp;
 
+    
     if (block_buffer_tail != next_buffer_head_temp) {
        if(buflen) {
      // #ifdef SDSUPPORT
@@ -5034,18 +5053,18 @@ else if (e_steps > 0) {
 
     //update current temperature
     MAILBOX_DATA_FLOAT(HOTEND_TEMP_ADDR) =  analog2temp(current_raw);
-    // MAILBOX_DATA(HOTEND_TEMP_RAW_ADDR) =  current_raw2;
-    // MAILBOX_DATA_FLOAT(X_DATA_ADDR) = current_position[0];
-    // MAILBOX_DATA_FLOAT(Y_DATA_ADDR) = current_position[1];
-    // MAILBOX_DATA_FLOAT(Z_DATA_ADDR) = current_position[2];
-    // MAILBOX_DATA_FLOAT(E_DATA_ADDR) = current_position[3];
+    MAILBOX_DATA(HOTEND_TEMP_RAW_ADDR) =  current_raw2;
+    MAILBOX_DATA_FLOAT(X_DATA_ADDR) = current_position[0];
+    MAILBOX_DATA_FLOAT(Y_DATA_ADDR) = current_position[1];
+    MAILBOX_DATA_FLOAT(Z_DATA_ADDR) = current_position[2];
+    MAILBOX_DATA_FLOAT(E_DATA_ADDR) = current_position[3];
+
   }
 
   void initSteppers(){
     //no use of enable pin
     //  _CLR(shields_data , X_EN_PIN);
     // XGpio_SetDataDirection(&ShieldInst, 1, 0x00);
-
   }
 
   void initializeXADC(){
@@ -5063,16 +5082,17 @@ else if (e_steps > 0) {
 
   void initializeGPIO(){
     int xStatus;
-    shields_data = 0;
     xStatus = XGpio_Initialize(&ShieldInst, SHIELDS_DEVICE_ID);
-    if (xStatus != XST_SUCCESS)
+    if (xStatus != XST_SUCCESS){
       // return XST_FAILURE;
       return;
+    }
 //    xStatus = XGpio_Initialize(&HeaterInst, HEATER_DEVICE_ID);
-//    if (xStatus != XST_SUCCESS)
+//    if (xStatus != XST_SUCCESS){
 //      // return XST_FAILURE;
 //      return;
-    // Set LEDs direction to outputs
+//    }
+// Set LEDs direction to outputs
 //    XGpio_SetDataDirection(&HeaterInst, 1, 0x00);
 
     u32 shield_dir = 0x00;
@@ -5084,7 +5104,9 @@ else if (e_steps > 0) {
     XGpio_SetDataDirection(&ShieldInst, 1, shield_dir);
     //All are initialized as low
     // printf("<a>shield value: %d\r\n",XGpio_DiscreteRead(&ShieldInst, 1));
-    XGpio_DiscreteWrite(&ShieldInst, 1, 0x00);
+
+    shields_data = 0x00;
+    XGpio_DiscreteWrite(&ShieldInst, 1, shields_data);
     // printf("<b>shield value: %d\r\n",XGpio_DiscreteRead(&ShieldInst, 1));
     //XGpio_SetDataDirection(&ShieldInst, 1, 0x00);
   }
@@ -5189,8 +5211,8 @@ else if (e_steps > 0) {
 
     // xStatus = XTmrCtr_Initialize(&TimerInstancePtr4,XPAR_TMRCTR_3_DEVICE_ID);
     // if(XST_SUCCESS != xStatus){
-      // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr4 ng");
-      // print("TIMER3 INIT FAILED \n\r");
+    //   SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr4 ng");
+    //   print("TIMER3 INIT FAILED \n\r");
     // }
 
     // XTmrCtr_SetHandler(&TimerInstancePtr4,

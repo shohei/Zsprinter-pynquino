@@ -58,6 +58,7 @@
 #define YAXIS_STEPS_PER_MM AXIS_STEPS_PER_MM
 #define ZAXIS_STEPS_PER_MM AXIS_STEPS_PER_MM
 #define EAXIS_STEPS_PER_MM 182 //182:160*92.65/80 (original: 700)
+// #define EAXIS_STEPS_PER_MM 700 //182:160*92.65/80 (original: 700)
 
 //// Calibration variables
 // X, Y, Z, E steps per unit - Metric Prusa Mendel with Wade extruder:

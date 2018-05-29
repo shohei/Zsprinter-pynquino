@@ -54,6 +54,7 @@ void extruderFan(void);
 int target_raw = 0;
 int target_temp = 0;
 int current_raw = 0;
+int current_raw2 = 0;
 int current_raw_maxval = -32000;
 int current_raw_minval = 32000;
 int tt_maxval;
@@ -316,6 +317,7 @@ int analogRead(XSysMon *SysMonInstPtr, int vaux_number){
 	while ((XSysMon_GetStatus(SysMonInstPtr) & XSM_SR_EOS_MASK) != XSM_SR_EOS_MASK);//HALT UNTIL ADC RUNS
 
 	u32 ExtVolRawData = XSysMon_GetAdcData(SysMonInstPtr,XSM_CH_AUX_MIN+vaux_number); //Read the external Vaux0 Data
+	current_raw2 = ExtVolRawData;
 	int ExtVolData = XSysMon_RawToExtVoltage10BitVal(ExtVolRawData);
 	return ExtVolData;
 }
