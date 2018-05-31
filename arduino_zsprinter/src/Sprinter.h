@@ -173,3 +173,4 @@ void parse_command(char serial_char, int idx);
 void get_command_mailbox();
 void initializeOLED();
 void mydelay(int factor);
+

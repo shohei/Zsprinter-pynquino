@@ -7,6 +7,8 @@ __email__ = "aoki@shokara.com"
 
 ARDUINO_OLED_PROGRAM = "arduino_zsprinter.bin"
 PRINT_STRING = 0x3
+UPDATE_BRAM_STRING = 0x4
+
 #START_COMMAND_DUMMY = 0xA
 BUFLEN_DATA_ADDR = 100
 X_DATA_ADDR = 101
@@ -20,6 +22,8 @@ ENDSTOP_Z_ADDR = 108
 BUFLEN_ACCUM_DATA_ADDR = 109
 BUFLEN_ACCUM_FINISHED_DATA_ADDR = 110
 NEXT_BUFFER_HEAD_ADDR = 111
+
+HOTEND_TEMP_RAW_ADDR = 112
 
 def _reg2float(reg):
     s = struct.pack('>L', reg)
@@ -87,6 +91,9 @@ class Arduino_Zsprinter(object):
     #def start(self):
     #    self.microblaze.write_blocking_command(START_COMMAND_DUMMY)
 
+    def update_bram(self):
+        self.microblaze.write_blocking_command(UPDATE_BRAM_STRING)
+
     def read_buflen(self):
         buflen = self.microblaze.read_mailbox(4*BUFLEN_DATA_ADDR,4)
         return buflen
@@ -117,4 +124,8 @@ class Arduino_Zsprinter(object):
         z = _reg2float(current_position_z_raw)
         e = _reg2float(current_position_e_raw)
         return [x,y,z,e] 
+
+    def read_hotend_temp_raw(self):
+        hotend_temp_raw = int(self.microblaze.read_mailbox(4*HOTEND_TEMP_RAW_ADDR,1))
+        return hotend_temp_raw
 

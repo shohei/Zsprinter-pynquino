@@ -422,6 +422,7 @@ const int dropsegments=5; //everything with less than this number of steps will 
 // When temperature exceeds max temp, your heater will be switched off.
 // This feature exists to protect your hotend from overheating accidentally, but *NOT* from thermistor short/failure!
 // You should use MINTEMP for thermistor short/failure protection.
+// #define MAXTEMP 300
 #define MAXTEMP 275
 
 // Select one of these only to define how the nozzle temp is read.

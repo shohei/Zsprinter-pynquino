@@ -542,6 +542,7 @@ static bool retract_feedrate_aktiv = false;
   unsigned long codenum_heater; 
   bool waiting_until_setpoint = false;
   bool target_direction_heating;
+  static short last_e_steps;
 
   // DATA_ADDR definitions for BRAM
   #define BUFLEN_DATA_ADDR 100
@@ -1785,11 +1786,16 @@ void process_commands() {
 //      if (!code_seen(axis_codes[E_AXIS])){
 //        st_synchronize();
 //      }
+    
+        //G92 E0
+        codenum = code_value();
+        current_position[E_AXIS] = codenum;
+        position[E_AXIS] = -1*last_e_steps;
 
-      for (int i = 0; i < NUM_AXIS; i++) {
-        if (code_seen(axis_codes[i]))
-          current_position[i] = code_value();
-      }
+      // for (int i = 0; i < NUM_AXIS; i++) {
+      //   if (code_seen(axis_codes[i]))
+      //     current_position[i] = code_value();
+      // }
 //      plan_set_position(current_position[X_AXIS],
 //          current_position[Y_AXIS], current_position[Z_AXIS],
 //          current_position[E_AXIS]);
@@ -3188,6 +3194,7 @@ void process_commands() {
     block->steps_e = labs(target[E_AXIS] - position[E_AXIS]);
     block->steps_e *= extrudemultiply;
     block->steps_e /= 100;
+    last_e_steps = block->steps_e;
     block->step_event_count = max(block->steps_x,
         max(block->steps_y, max(block->steps_z, block->steps_e)));
     // printf("step x: %d, step y: %d, step z: %d, step e: %d\r\n", block->steps_x, block->steps_y, block->steps_z, block->steps_e);
