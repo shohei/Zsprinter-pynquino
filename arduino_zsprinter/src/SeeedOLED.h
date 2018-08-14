@@ -26,7 +26,9 @@
 #define SeeedOLED_data_H
 
 // SeeedOLED Instruction set addresses
+extern "C" {
 #include "i2c.h"
+}
 
 //#if defined(ARDUINO) && ARDUINO >= 100
 //#include "Arduino.h"

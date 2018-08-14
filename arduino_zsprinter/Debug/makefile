@@ -35,7 +35,7 @@ all: arduino_zsprinter.elf secondary-outputs
 arduino_zsprinter.elf: $(OBJS) ../src/lscript.ld $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: MicroBlaze g++ linker'
-	mb-g++ -Wl,-T -Wl,../src/lscript.ld -L../../bsp_iop_arduino/iop_arduino_mb/lib -mlittle-endian -mcpu=v10.0 -mxl-soft-mul -Wl,--no-relax -o "arduino_zsprinter.elf" $(OBJS) $(USER_OBJS) $(LIBS)
+	mb-g++ -Wl,-T -Wl,../src/lscript.ld -I../../bsp_iop_arduino/iop_arduino_mb/include -L../../bsp_iop_arduino/iop_arduino_mb/lib -mlittle-endian -mcpu=v10.0 -mxl-soft-mul -Wl,--no-relax -o "arduino_zsprinter.elf" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
