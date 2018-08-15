@@ -3,6 +3,7 @@
 	<name>bsp_iop_arduino_mb</name>
 	<comment>Created by SDK v2017.4</comment>
 	<projects>
+		<project>top_hw_platform_0</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

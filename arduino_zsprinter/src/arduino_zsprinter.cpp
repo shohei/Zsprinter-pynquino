@@ -176,6 +176,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "xuartlite.h"
+#include "xuartlite_l.h"
+extern "C" {
+  #include "xio_switch.h"
+}
+#define UARTLITE_DEVICE_ID	XPAR_UARTLITE_0_DEVICE_ID
+#define UARTLITE_DEVICE2_ID	XPAR_UARTLITE_1_DEVICE_ID
+
+
 #define CLEAR_DISPLAY       0x1
 #define PRINT_STRING        0x3
 
@@ -1142,7 +1151,69 @@ void get_command_mailbox(){
 //   }
 // }
 
+XUartLite UartLite;
+XUartLite UartLite2;
+
+#define GPIO_EXAMPLE_DEVICE_ID  XPAR_GPIO_1_DEVICE_ID
+#define LED_DELAY     10000000
+#define LED_CHANNEL 1
+
+XGpio Gpio; /* The Instance of the GPIO Driver */
+#define LED 0x01   /* Assumes bit 0 of GPIO is connected to an LED  */
+
+
 void loop() {
+	int Status;
+		volatile int Delay;
+
+		/* Initialize the GPIO driver */
+		Status = XGpio_Initialize(&Gpio, GPIO_EXAMPLE_DEVICE_ID);
+		if (Status != XST_SUCCESS) {
+	//		xil_printf("Gpio Initialization Failed\r\n");
+//			return XST_FAILURE;
+		}
+
+		/* Set the direction for all signals as inputs except the LED output */
+		XGpio_SetDataDirection(&Gpio, LED_CHANNEL, ~LED);
+
+		/* Loop forever blinking the LED */
+
+		while (1) {
+			XGpio_DiscreteWrite(&Gpio, LED_CHANNEL, LED);
+			for (Delay = 0; Delay < LED_DELAY; Delay++);
+			XGpio_DiscreteClear(&Gpio, LED_CHANNEL, LED);
+			for (Delay = 0; Delay < LED_DELAY; Delay++);
+		}
+
+//	init_io_switch();
+//	set_pin(0,UART0_RX);
+//	set_pin(1,UART0_TX);
+//
+//	int Status;
+//	Status = XUartLite_Initialize(&UartLite, UARTLITE_DEVICE_ID);
+//	if (Status != XST_SUCCESS) {
+//	//	return XST_FAILURE;
+//	}
+//	Status = XUartLite_Initialize(&UartLite2, UARTLITE_DEVICE2_ID);
+//	if (Status != XST_SUCCESS) {
+//	//	return XST_FAILURE;
+//	}
+//
+//	const char *hoge = "a";
+//	u8 *hoge2 = (u8 *) hoge;
+//	while(1){
+//		XUartLite_Send(&UartLite, hoge2, 1);
+//		XUartLite_Send(&UartLite2, hoge2, 1);
+//		for(int i=0;i<1000;i++){
+//		  for(int j=0;j<1000;j++){
+//	            for(int k=0;k<100;k++){
+//                      asm volatile("nop");
+//                    }
+//		}
+//            }
+//        }
+
+/*
   while( MAILBOX_CMD_ADDR==0 || clear_to_send==false); // Wait until any of the conditions satisfied
 
   if(MAILBOX_CMD_ADDR!=0){
@@ -1164,6 +1235,7 @@ void loop() {
       }
       // MAILBOX_CMD_ADDR = 0x0;
    }
+*/
 }
 
 //------------------------------------------------

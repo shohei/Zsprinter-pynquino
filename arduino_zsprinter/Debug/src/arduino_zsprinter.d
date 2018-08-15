@@ -34,7 +34,13 @@ src/arduino_zsprinter.o src/arduino_zsprinter.d: \
  ../../bsp_iop_arduino/iop_arduino_mb/include/circular_buffer.h \
  ../../bsp_iop_arduino/iop_arduino_mb/include/timer.h \
  ../../bsp_iop_arduino/iop_arduino_mb/include/gpio.h \
+<<<<<<< HEAD
  ../../bsp_iop_arduino/iop_arduino_mb/include/i2c.h
+=======
+ ../../bsp_iop_arduino/iop_arduino_mb/include/xuartlite.h \
+ ../../bsp_iop_arduino/iop_arduino_mb/include/xuartlite_l.h \
+ ../../bsp_iop_arduino/iop_arduino_mb/include/xio_switch.h
+>>>>>>> 41463a109a9fc6c20e8fddaf993d51c872e55dba
 
 ../src/fastio.h:
 
@@ -114,4 +120,12 @@ src/arduino_zsprinter.o src/arduino_zsprinter.d: \
 
 ../../bsp_iop_arduino/iop_arduino_mb/include/gpio.h:
 
+<<<<<<< HEAD
 ../../bsp_iop_arduino/iop_arduino_mb/include/i2c.h:
+=======
+../../bsp_iop_arduino/iop_arduino_mb/include/xuartlite.h:
+
+../../bsp_iop_arduino/iop_arduino_mb/include/xuartlite_l.h:
+
+../../bsp_iop_arduino/iop_arduino_mb/include/xio_switch.h:
+>>>>>>> 41463a109a9fc6c20e8fddaf993d51c872e55dba
