@@ -33,7 +33,8 @@ mv zsprinter-pynquino/bsp_iop_arduino .
 
 Not sure why, but Xilinx SDK executes "make clean" all the time, rather than "make all".
 We have to force "make all" as shown in the picture below.
+
 ![setting](setting.png)
 
-
+Attention: because of the make behavior above, "make clean" doesn't do anything. For cleaning purpose, use "make mrproper" instead.
 
