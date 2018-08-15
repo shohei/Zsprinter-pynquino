@@ -19,6 +19,12 @@ END
 
 
 BEGIN DRIVER
+ PARAMETER DRIVER_NAME = uartlite
+ PARAMETER DRIVER_VER = 3.2
+ PARAMETER HW_INSTANCE = iop_arduino_axi_uartlite_1
+END
+
+BEGIN DRIVER
  PARAMETER DRIVER_NAME = gpio
  PARAMETER DRIVER_VER = 4.3
  PARAMETER HW_INSTANCE = iop_arduino_gpio_subsystem_arduino_gpio

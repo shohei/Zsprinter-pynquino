@@ -53,10 +53,6 @@ arduino_zsprinter.bin: arduino_zsprinter.elf
 
 # Other Targets
 clean:
-	-@echo 'dummy clean (because Xilinx SDK executes make clean all the time)'
-	-@echo 'if you really clean, use make mrproper instead.'
-
-mrproper:
 	-$(RM) $(EXECUTABLES)$(OBJS)$(S_UPPER_DEPS)$(C_DEPS)$(ELFSIZE) arduino_zsprinter.elf arduino_zsprinter.bin
 	-@echo ' '
 
