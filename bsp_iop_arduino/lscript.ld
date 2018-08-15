@@ -10,14 +10,14 @@
 /*                                                                 */
 /*******************************************************************/
 
-_STACK_SIZE = DEFINED(_STACK_SIZE) ? _STACK_SIZE : 0x400;
-_HEAP_SIZE = DEFINED(_HEAP_SIZE) ? _HEAP_SIZE : 0x800;
+_STACK_SIZE = DEFINED(_STACK_SIZE) ? _STACK_SIZE : 0x200;
+_HEAP_SIZE = DEFINED(_HEAP_SIZE) ? _HEAP_SIZE : 0x200;
 
 /* Define Memories in the system */
 
 MEMORY
 {
-   microblaze_bram : ORIGIN = 0x50, LENGTH = 0xEFB0
+   microblaze_bram : ORIGIN = 0x50, LENGTH = 0x3EFB0
 }
 
 /* Specify the default entry point to the program */

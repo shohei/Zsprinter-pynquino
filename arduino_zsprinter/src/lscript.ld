@@ -17,7 +17,7 @@ _HEAP_SIZE = DEFINED(_HEAP_SIZE) ? _HEAP_SIZE : 0x200;
 
 MEMORY
 {
-   mb_4_lmb_bram_if_cntlr : ORIGIN = 0x50, LENGTH = 0x3FFB0
+   microblaze_bram : ORIGIN = 0x50, LENGTH = 0x3FFB0
 }
 
 /* Specify the default entry point to the program */
@@ -48,15 +48,15 @@ SECTIONS
    *(.text)
    *(.text.*)
    *(.gnu.linkonce.t.*)
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 .init : {
    KEEP (*(.init))
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 .fini : {
    KEEP (*(.fini))
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 .ctors : {
    __CTOR_LIST__ = .;
@@ -67,7 +67,7 @@ SECTIONS
    KEEP (*(.ctors))
    __CTOR_END__ = .;
    ___CTORS_END___ = .;
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 .dtors : {
    __DTOR_LIST__ = .;
@@ -78,7 +78,7 @@ SECTIONS
    KEEP (*(.dtors))
    PROVIDE(__DTOR_END__ = .);
    PROVIDE(___DTORS_END___ = .);
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 .rodata : {
    __rodata_start = .;
@@ -86,7 +86,7 @@ SECTIONS
    *(.rodata.*)
    *(.gnu.linkonce.r.*)
    __rodata_end = .;
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 .sdata2 : {
    . = ALIGN(8);
@@ -96,7 +96,7 @@ SECTIONS
    *(.gnu.linkonce.s2.*)
    . = ALIGN(8);
    __sdata2_end = .;
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 .sbss2 : {
    __sbss2_start = .;
@@ -104,7 +104,7 @@ SECTIONS
    *(.sbss2.*)
    *(.gnu.linkonce.sb2.*)
    __sbss2_end = .;
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 .data : {
    . = ALIGN(4);
@@ -113,31 +113,31 @@ SECTIONS
    *(.data.*)
    *(.gnu.linkonce.d.*)
    __data_end = .;
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 .got : {
    *(.got)
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 .got1 : {
    *(.got1)
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 .got2 : {
    *(.got2)
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 .eh_frame : {
    *(.eh_frame)
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 .jcr : {
    *(.jcr)
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 .gcc_except_table : {
    *(.gcc_except_table)
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 .sdata : {
    . = ALIGN(8);
@@ -146,7 +146,7 @@ SECTIONS
    *(.sdata.*)
    *(.gnu.linkonce.s.*)
    __sdata_end = .;
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 .sbss (NOLOAD) : {
    . = ALIGN(4);
@@ -156,7 +156,7 @@ SECTIONS
    *(.gnu.linkonce.sb.*)
    . = ALIGN(8);
    __sbss_end = .;
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 .tdata : {
    __tdata_start = .;
@@ -164,7 +164,7 @@ SECTIONS
    *(.tdata.*)
    *(.gnu.linkonce.td.*)
    __tdata_end = .;
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 .tbss : {
    __tbss_start = .;
@@ -172,7 +172,7 @@ SECTIONS
    *(.tbss.*)
    *(.gnu.linkonce.tb.*)
    __tbss_end = .;
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 .bss (NOLOAD) : {
    . = ALIGN(4);
@@ -183,7 +183,7 @@ SECTIONS
    *(COMMON)
    . = ALIGN(4);
    __bss_end = .;
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 _SDA_BASE_ = __sdata_start + ((__sbss_end - __sdata_start) / 2 );
 
@@ -197,7 +197,7 @@ _SDA2_BASE_ = __sdata2_start + ((__sbss2_end - __sdata2_start) / 2 );
    _heap_start = .;
    . += _HEAP_SIZE;
    _heap_end = .;
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 .stack (NOLOAD) : {
    _stack_end = .;
@@ -205,7 +205,7 @@ _SDA2_BASE_ = __sdata2_start + ((__sbss2_end - __sdata2_start) / 2 );
    . = ALIGN(8);
    _stack = .;
    __stack = _stack;
-} > mb_4_lmb_bram_if_cntlr
+} > microblaze_bram
 
 _end = .;
 }
