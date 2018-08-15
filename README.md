@@ -37,4 +37,11 @@ We have to force "make all" as shown in the picture below.
 ![setting](setting.png)
 
 Attention: because of the make behavior above, "make clean" doesn't do anything. For cleaning purpose, use "make mrproper" instead.
+You can put clean script manually using pre-build step in the C/++ build setting.
+Insert following command into the pre-build command
+```
+rm -rf  ./src/heater.o ./src/SeeedOLED.o ./src/arduino_zsprinter.o  ./src/heater.d ./src/SeeedOLED.d ./src/arduino_zsprinter.d  arduino_zsprinter.elf.size  arduino_zsprinter.elf arduino_zsprinter.bin
+
+```
+![setting2](setting2.png)
 
