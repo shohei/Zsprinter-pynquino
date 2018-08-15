@@ -30,8 +30,9 @@ mv zsprinter-pynquino/bsp_iop_arduino .
 2. Import BSP and Zsprinter project into Xilinx SDK
 
 3. Change C/C++ build setting
+
 Not sure why, but Xilinx SDK executes "make clean" all the time, rather than "make all".
-We have to update the defalt make behavior as shown in the picture below.
+We have to force "make all" as shown in the picture below.
 ![setting](setting.png)
 
 
