@@ -60,6 +60,8 @@ mrproper:
 	-$(RM) $(EXECUTABLES)$(OBJS)$(S_UPPER_DEPS)$(C_DEPS)$(ELFSIZE) arduino_zsprinter.elf arduino_zsprinter.bin
 	-@echo ' '
 
+
+
 secondary-outputs: $(ELFSIZE) arduino_zsprinter.bin
 
 .PHONY: all clean dependents
