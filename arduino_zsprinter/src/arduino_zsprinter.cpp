@@ -175,6 +175,11 @@
 #include "i2c.h"
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+extern "C" {
+  #include "uart.h"
+}
+uart uart_dev0;
 
 #define CLEAR_DISPLAY       0x1
 #define PRINT_STRING        0x3
@@ -877,15 +882,19 @@ void showString (char *s)
 // Init 
 //------------------------------------------------
 
-void setup() {
-  // setvbuf(stdin, NULL, _IONBF, 0);
-  // print("Sprinter started.\r\n");
-  //  Serial.begin(BAUDRATE);
-  // showString("Sprinter\r\n");
-  // showString(_VERSION_TEXT);
-  // showString("\r\n");
-  // showString("start\r\n");
+void uart_print(uart dev, char * msg, unsigned int length){
+   if(length<16){
+    uart_write(dev,msg,length);
+    usleep(1000);
+   }  else if(length<32){
+    uart_write(dev,msg,length);
+    usleep(1000);
+    uart_write(dev,msg+16,length-16);
+    usleep(1000);
+   } 
+}
 
+void setup() {
   MAILBOX_CMD_ADDR = 0x0;
   MAILBOX_DATA(BUFLEN_DATA_ADDR) = 0;
   MAILBOX_DATA(BUFLEN_ACCUM_DATA_ADDR) = 0;
@@ -896,7 +905,6 @@ void setup() {
   MAILBOX_DATA_FLOAT(Z_DATA_ADDR) = 0;
   MAILBOX_DATA_FLOAT(E_DATA_ADDR) = 0;
   MAILBOX_DATA_FLOAT(HOTEND_TEMP_ADDR) = 0;
-//  initializeOLED();
 
   initializeGPIO();
   initializeAxiTimer();
@@ -1108,6 +1116,13 @@ void setup() {
                        * axis_steps_per_unit[i];
   }
 
+  uart_dev0 = uart_open(1,0);
+  char dummy_msg[] = "*";
+  uart_print(uart_dev0, dummy_msg, 1);
+  char msg[] = "Zsprinter started !!!\r\n";
+  //uart_write(uart_dev0, msg, strlen(msg));
+  uart_print(uart_dev0, msg, strlen(msg));
+
 }
 
 char current_command[64] = {};
@@ -1142,7 +1157,20 @@ void get_command_mailbox(){
 //   }
 // }
 
+char recv_buffer[64];
+
 void loop() {
+  //uart_readline(uart_dev0, recv_buffer);
+  uart_readline(uart_dev0, current_command);
+  current_command_length = strlen(current_command);
+  for(int i=0;i<current_command_length;i++){
+     parse_command(current_command[i],i);
+  }
+  //char msg[] = "\r\nYou received: ";
+  //uart_print(uart_dev0, msg, strlen(msg));
+  //uart_print(uart_dev0, recv_buffer, strlen(recv_buffer));
+
+/*
   while( MAILBOX_CMD_ADDR==0 || clear_to_send==false); // Wait until any of the conditions satisfied
 
   if(MAILBOX_CMD_ADDR!=0){
@@ -1164,6 +1192,7 @@ void loop() {
       }
       // MAILBOX_CMD_ADDR = 0x0;
    }
+*/
 }
 
 //------------------------------------------------

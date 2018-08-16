@@ -106,6 +106,18 @@ void uart_read(uart dev_id, char* read_data, unsigned int length){
     XUartLite_Recv(&xuart[dev_id], read_data, length);
 }
 
+void uart_readline(uart dev_id, char* read_data){
+//    XUartLite_Recv(&xuart[dev_id], read_data, length);
+    unsigned int ReceivedCount = 0;
+    while (1) {
+            ReceivedCount += XUartLite_Recv(&xuart[dev_id],
+                           read_data + ReceivedCount,
+                           1);
+            if (read_data[ReceivedCount - 1] == '\n') {
+                break;
+            }
+        }
+}
 
 void uart_write(uart dev_id, char* write_data, unsigned int length){
     XUartLite_Send(&xuart[dev_id], write_data, length);
