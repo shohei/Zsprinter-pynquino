@@ -180,6 +180,8 @@ extern "C" {
   #include "uart.h"
 }
 uart uart_dev0;
+char *ok_msg = "ok\r\n";
+char temp_msg[10];
 
 #define CLEAR_DISPLAY       0x1
 #define PRINT_STRING        0x3
@@ -1409,6 +1411,7 @@ void parse_command(char serial_char, int idx) {
         // showString("ok\r\n");
         ////Serial.println("ok");
         // printf("ok\r\n");
+        //uart_write(uart_dev0,ok_msg,strlen(ok_msg));
         break;
 
 
@@ -2062,6 +2065,10 @@ void process_commands() {
       //Serial.print(hotendtC);
       //printf("current_raw:%d\r\n",current_raw);
       // printf("ok T:%d",hotendtC);
+
+      sprintf(temp_msg, "ok T:%d\r\n",hotendtC);
+      uart_write(uart_dev0,temp_msg,strlen(temp_msg));
+      
       MAILBOX_DATA_FLOAT(HOTEND_TEMP_ADDR) = hotendtC;
       clear_to_send = true;
       MAILBOX_CMD_ADDR = 0x0;
@@ -2297,6 +2304,7 @@ void process_commands() {
     case 93: // M93 show current axis steps.
     clear_to_send = true;
     MAILBOX_CMD_ADDR = 0x0;
+      uart_write(uart_dev0,ok_msg,strlen(ok_msg));
       // printf("ok \r\n");
       // printf("X:%dY:%dZ:%dE:%d\r\n",axis_steps_per_unit[0],axis_steps_per_unit[1],axis_steps_per_unit[2],axis_steps_per_unit[3]);
       //showString(PSTR("ok "));
@@ -2607,6 +2615,7 @@ void process_commands() {
 #endif
   clear_to_send = true;
   MAILBOX_CMD_ADDR = 0x0;
+  uart_write(uart_dev0,ok_msg,strlen(ok_msg));
     // printf("ok\r\n");
     //  //showString(PSTR("ok\r\n"));
     ////Serial.println("ok");
@@ -4999,6 +5008,7 @@ else if (e_steps > 0) {
             	homing_status = 0;
             	clear_to_send = true;
             	MAILBOX_CMD_ADDR = 0x0;
+                uart_write(uart_dev0, ok_msg, strlen(ok_msg));  
             }
         }
   	} else if(waiting_until_setpoint) {
@@ -5012,7 +5022,8 @@ else if (e_steps > 0) {
            } else {
            	 waiting_until_setpoint = false;
            	 clear_to_send = true;
-             MAILBOX_CMD_ADDR = 0x0;	
+                 MAILBOX_CMD_ADDR = 0x0;	
+                 uart_write(uart_dev0, ok_msg, strlen(ok_msg));  
            }
         }
     }

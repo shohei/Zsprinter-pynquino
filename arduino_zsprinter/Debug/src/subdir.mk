@@ -26,7 +26,7 @@ C_DEPS += \
 src/%.o: ../src/%.c
 	@echo 'Building file: $<'
 	@echo 'Invoking: MicroBlaze gcc compiler'
-	mb-gcc -Wall -O0 -g3 -c -fmessage-length=0 -MT"$@" -L../../bsp_iop_arduino/iop_arduino_mb/lib -I../../bsp_iop_arduino/iop_arduino_mb/include -mlittle-endian -mcpu=v10.0 -mxl-soft-mul -Wl,--no-relax -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
+	mb-gcc -Wall -O1 -g3 -c -fmessage-length=0 -MT"$@" -L../../bsp_iop_arduino/iop_arduino_mb/lib -I../../bsp_iop_arduino/iop_arduino_mb/include -mlittle-endian -mcpu=v10.0 -mxl-soft-mul -Wl,--no-relax -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
@@ -34,7 +34,7 @@ src/%.o: ../src/%.c
 src/%.o: ../src/%.cpp
 	@echo 'Building file: $<'
 	@echo 'Invoking: MicroBlaze gcc compiler'
-	mb-g++ -Wall -O0 -g3 -c -fmessage-length=0 -MT"$@" -L../../bsp_iop_arduino/iop_arduino_mb/lib -I../../bsp_iop_arduino/iop_arduino_mb/include -mlittle-endian -mcpu=v10.0 -mxl-soft-mul -Wl,--no-relax -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
+	mb-g++ -Wall -O1 -g3 -c -fmessage-length=0 -MT"$@" -L../../bsp_iop_arduino/iop_arduino_mb/lib -I../../bsp_iop_arduino/iop_arduino_mb/include -mlittle-endian -mcpu=v10.0 -mxl-soft-mul -Wl,--no-relax -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
