@@ -203,6 +203,7 @@ char dispenser_command_bytes[1];
 //XGpio LEDInst;
 //XGpio BTNInst;
 XGpio ShieldInst;
+XGpio CK_ShieldInst;
 //XGpio HeaterInst;
 static int btn_value;
 
@@ -220,10 +221,25 @@ static int btn_value;
 #define HEATER_PIN 18 //A4
 #define THERMISTOR_PIN 19 //A5
 
+// ChipKit shield pins
+#define X_EN_PIN 0
+#define Y_EN_PIN 1
+#define Z_EN_PIN 2
+#define E_EN_PIN 3
+#define HTR0_PIN 4
+#define HTR1_PIN 5
+#define FAN0_PIN 6
+#define FAN1_PIN 7
+#define DISP_PIN 8
+#define UV_PIN 9 
+
 //#define BTNS_DEVICE_ID    XPAR_BUTTONS_DEVICE_ID
 //#define BTN_INT       XGPIO_IR_CH1_MASK
 //#define LEDS_DEVICE_ID    XPAR_LEDS_DEVICE_ID
 #define SHIELDS_DEVICE_ID   XPAR_IOP_ARDUINO_GPIO_SUBSYSTEM_ARDUINO_GPIO_BASEADDR
+//#define CK_SHIELDS_DEVICE_ID  XPAR_IOP_ARDUINO_GPIO_SUBSYSTEM_CK_GPIO_BASEADDR
+#define CK_SHIELDS_DEVICE_ID XPAR_GPIO_1_DEVICE_ID
+
 //#define HEATER_DEVICE_ID  XPAR_IOP_ARDUINO_GPIO_SUBSYSTEM_CK_GPIO_BASEADDR
 
 #define _SET(TARGET,BIT) (TARGET |= 1 << BIT)
@@ -232,6 +248,7 @@ static int btn_value;
 #define _CHK(TARGET,BIT) ((TARGET >> BIT) & 1)
 
 static int shields_data;
+static int ck_shields_data;
 static int intr_cntr;
 static int pulse_status = 0;
 static XTmrCtr TimerInstancePtr;
@@ -944,7 +961,12 @@ void setup() {
   MAILBOX_DATA_FLOAT(E_DATA_ADDR) = 0;
   MAILBOX_DATA_FLOAT(HOTEND_TEMP_ADDR) = 0;
 
+  initializeUART0(); // for communicating with the host (serial console)
+  initializeUART1(); // for setting dispenser (RS-232C)
+
   initializeGPIO();
+  initializeGPIO_ChipKit();
+
   initializeAxiTimer();
 
   for (int i = 0; i < BUFSIZE; i++) {
@@ -1155,8 +1177,6 @@ void setup() {
   }
 
 
-  initializeUART0(); // for communicating with the host (serial console)
-  initializeUART1(); // for setting dispenser (RS-232C)
   
 }
 
@@ -2623,11 +2643,19 @@ void process_commands() {
       uart_print(uart_dev0, "UV LED OFF\r\n", strlen("UV LED OFF\r\n")); 
       break;
 
-    case 702: // Toggle dispenser
-      uart_print(uart_dev0, "Toggle dispenser\r\n", strlen("Toggle dispenser\r\n")); 
+    case 702: // dispenser on
+      uart_print(uart_dev0, "Dispenser ON\r\n", strlen("Dispenser ON\r\n")); 
+      _SET(ck_shields_data, DISP_PIN);
+      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
       break;
 
-    case 703: // Change dispenser discharge pressure
+    case 703: // dispenser off
+      uart_print(uart_dev0, "Dispenser OFF\r\n", strlen("Dispenser OFF\r\n")); 
+      _CLR(ck_shields_data , DISP_PIN);
+      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+      break;
+
+    case 704: // Change dispenser discharge pressure
       int target_pressure;
       if (code_seen('S')){
         target_pressure = code_value();
@@ -2635,13 +2663,13 @@ void process_commands() {
       update_dispenser_pressure(1, target_pressure); 
       break;
 
-    case 708:
+    case 709:
       homeaxis(X_AXIS);
       break;
-    case 709:
+    case 710:
       homeaxis(Y_AXIS);
       break;
-    case 710:
+    case 711:
       homeaxis(Z_AXIS);
       break;
 
@@ -5233,6 +5261,20 @@ else if (e_steps > 0) {
     XGpio_DiscreteWrite(&ShieldInst, 1, 0x00);
     // printf("<b>shield value: %d\r\n",XGpio_DiscreteRead(&ShieldInst, 1));
     //XGpio_SetDataDirection(&ShieldInst, 1, 0x00);
+  }
+
+  void initializeGPIO_ChipKit(){
+    int xStatus;
+    ck_shields_data = 0;
+    xStatus = XGpio_Initialize(&CK_ShieldInst, CK_SHIELDS_DEVICE_ID);
+    if (xStatus != XST_SUCCESS){
+      //do nothing
+      uart_print(uart_dev0, "UART1 error", strlen("UART1 error"));
+    }
+    u32 shield_dir = 0x00; // all pins are output
+    XGpio_SetDataDirection(&CK_ShieldInst, 1, shield_dir); 
+    XGpio_DiscreteWrite(&CK_ShieldInst, 1, 0x00);
+
   }
 
 #define XTC_CSR_ENABLE_PWM_MASK   0x00000200

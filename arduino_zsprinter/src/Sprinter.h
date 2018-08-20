@@ -139,6 +139,7 @@ void st_set_position(const long &x, const long &y, const long &z, const long &e)
 
 //function prototypes
 void initializeGPIO();
+void initializeGPIO_ChipKit();
 void initializeAxiTimer();
 
 void check_buffer_while_arc();
