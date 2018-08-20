@@ -2637,10 +2637,14 @@ void process_commands() {
 
     case 700: //UV LED ON
       uart_print(uart_dev0, "UV LED ON\r\n", strlen("UV LED ON\r\n")); 
+      _SET(ck_shields_data, UV_PIN);
+      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
       break;
 
     case 701: //UV LED OFF
       uart_print(uart_dev0, "UV LED OFF\r\n", strlen("UV LED OFF\r\n")); 
+      _CLR(ck_shields_data, UV_PIN);
+      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
       break;
 
     case 702: // dispenser on
