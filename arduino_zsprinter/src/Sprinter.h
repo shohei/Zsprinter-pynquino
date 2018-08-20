@@ -174,3 +174,7 @@ void get_command_mailbox();
 void initializeOLED();
 void mydelay(int factor);
 
+void update_dispenser_pressure(int channel, int target_pressure);
+void initializeUART0();
+void initializeUART1();
+

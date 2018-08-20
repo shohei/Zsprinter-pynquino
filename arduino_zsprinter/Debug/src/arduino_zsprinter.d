@@ -35,7 +35,9 @@ src/arduino_zsprinter.o src/arduino_zsprinter.d: \
  ../../bsp_iop_arduino/iop_arduino_mb/include/timer.h \
  ../../bsp_iop_arduino/iop_arduino_mb/include/gpio.h \
  ../../bsp_iop_arduino/iop_arduino_mb/include/i2c.h \
- ../../bsp_iop_arduino/iop_arduino_mb/include/uart.h
+ ../../bsp_iop_arduino/iop_arduino_mb/include/uart.h \
+ ../../bsp_iop_arduino/iop_arduino_mb/include/xuartlite.h \
+ ../../bsp_iop_arduino/iop_arduino_mb/include/xuartlite_l.h
 
 ../src/fastio.h:
 
@@ -118,3 +120,7 @@ src/arduino_zsprinter.o src/arduino_zsprinter.d: \
 ../../bsp_iop_arduino/iop_arduino_mb/include/i2c.h:
 
 ../../bsp_iop_arduino/iop_arduino_mb/include/uart.h:
+
+../../bsp_iop_arduino/iop_arduino_mb/include/xuartlite.h:
+
+../../bsp_iop_arduino/iop_arduino_mb/include/xuartlite_l.h:

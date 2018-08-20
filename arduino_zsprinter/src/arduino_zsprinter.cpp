@@ -179,9 +179,23 @@
 extern "C" {
   #include "uart.h"
 }
+#include "xuartlite.h"
+#include "xuartlite_l.h"
+#define UARTLITE_DEVICE2_ID	XPAR_UARTLITE_0_DEVICE_ID
+
 uart uart_dev0;
 char *ok_msg = "ok\r\n";
-char temp_msg[10];
+char temp_msg[32];
+XUartLite UartLite1;
+char dispenser_command_bytes[1];
+
+// settings for Musashi dispenser
+#define STX 0x02
+#define ETX 0x03
+#define SPACE 0x20
+#define ENQ 0x05
+#define ACK 0x06
+#define EOT 0x04
 
 #define CLEAR_DISPLAY       0x1
 #define PRINT_STRING        0x3
@@ -889,9 +903,31 @@ void uart_print(uart dev, char * msg, unsigned int length){
     uart_write(dev,msg,length);
     usleep(1000);
    }  else if(length<32){
-    uart_write(dev,msg,length);
+    uart_write(dev,msg,16);
     usleep(1000);
     uart_write(dev,msg+16,length-16);
+    usleep(1000);
+   } 
+}
+
+void rs232c_write(char command_byte){
+    dispenser_command_bytes[0] = command_byte; 
+    XUartLite_Send(&UartLite1, (u8 *) dispenser_command_bytes, 1);
+    usleep(1000);
+}
+
+void rs232c_print(char *msg, unsigned int length){
+   if(length<16){
+    XUartLite_Send(&UartLite1, (u8 *) msg, length);
+    usleep(1000);
+   }  else if (length<32) {
+    XUartLite_Send(&UartLite1, (u8 *) msg, 16);
+    usleep(1000);
+    char shifted_msg[16];
+    for(int i=0;i<length-16;i++){
+      shifted_msg[i] = msg[16+i];
+    }
+    XUartLite_Send(&UartLite1,(u8 *) shifted_msg, length-16);
     usleep(1000);
    } 
 }
@@ -1118,13 +1154,30 @@ void setup() {
                        * axis_steps_per_unit[i];
   }
 
+
+  initializeUART0(); // for communicating with the host (serial console)
+  initializeUART1(); // for setting dispenser (RS-232C)
+  
+}
+
+//PYNQ-MicroBlaze UART, 115200 bps
+void initializeUART0(){
   uart_dev0 = uart_open(1,0);
   char dummy_msg[] = "*";
   uart_print(uart_dev0, dummy_msg, 1);
   char msg[] = "Zsprinter started !!!\r\n";
-  //uart_write(uart_dev0, msg, strlen(msg));
   uart_print(uart_dev0, msg, strlen(msg));
+}
 
+//Additional UART Lite, 38400 bps
+void initializeUART1(){
+   int Status;
+   Status = XUartLite_Initialize(&UartLite1, UARTLITE_DEVICE2_ID);
+   if (Status != XST_SUCCESS) {
+      //return XST_FAILURE;
+      char msg[] = "UART1 error\r\n";
+      uart_print(uart_dev0, msg, strlen(msg));
+   }
 }
 
 char current_command[64] = {};
@@ -1665,6 +1718,17 @@ void dumpAllPins(){
   // printf("HEATER_0_PIN:%d\r\n"  , HEATER_0_PIN );
   // printf("TEMP_0_PIN  :%d\r\n"  , TEMP_0_PIN   );
 }
+
+/**
+ * T0-T3: Switch tool, usually switching extruders
+ *
+ *   F[units/min] Set the movement feedrate
+ *   S1           Don't move the tool in XY after change
+ */
+inline void gcode_T(uint8_t tmp_extruder) {
+  //tool_change(tmp_extruder);
+}
+
 
 //------------------------------------------------
 // CHECK COMMAND AND CONVERT VALUES
@@ -2347,26 +2411,38 @@ void process_commands() {
 #if (X_MIN_PIN > -1)
       //showString(PSTR("x_min:"));
       //Serial.print((READ(X_MIN_PIN) ^ X_ENDSTOP_INVERT) ? "H " : "L ");
+      sprintf(temp_msg, "x_min: %s ", _CHK(XGpio_DiscreteRead(&ShieldInst, 1), X_MIN_PIN) != X_ENDSTOP_INVERT ? "H " : "L ");
+      uart_print(uart_dev0, temp_msg, strlen(temp_msg));
 #endif
 #if (X_MAX_PIN > -1)
       //showString(PSTR("x_max:"));
       //Serial.print((READ(X_MAX_PIN)^X_ENDSTOP_INVERT)?"H ":"L ");
-#endif
+      sprintf(temp_msg, "x_max: %s ", _CHK(XGpio_DiscreteRead(&ShieldInst, 1), X_MAX_PIN) != X_ENDSTOP_INVERT ? "H " : "L ");
+      uart_print(uart_dev0, temp_msg, strlen(temp_msg));
+      #endif
 #if (Y_MIN_PIN > -1)
       //showString(PSTR("y_min:"));
       //Serial.print((READ(Y_MIN_PIN) ^ Y_ENDSTOP_INVERT) ? "H " : "L ");
+      sprintf(temp_msg, "y_min: %s ", _CHK(XGpio_DiscreteRead(&ShieldInst, 1), Y_MIN_PIN) != Y_ENDSTOP_INVERT ? "H " : "L ");
+      uart_print(uart_dev0, temp_msg, strlen(temp_msg));
 #endif
 #if (Y_MAX_PIN > -1)
       //showString(PSTR("y_max:"));
       //Serial.print((READ(Y_MAX_PIN)^Y_ENDSTOP_INVERT)?"H ":"L ");
+      sprintf(temp_msg, "y_max: %s ", _CHK(XGpio_DiscreteRead(&ShieldInst, 1), Y_MAX_PIN) != Y_ENDSTOP_INVERT ? "H " : "L ");
+      uart_print(uart_dev0, temp_msg, strlen(temp_msg));
 #endif
 #if (Z_MIN_PIN > -1)
       //showString(PSTR("z_min:"));
       //Serial.print((READ(Z_MIN_PIN) ^ Z_ENDSTOP_INVERT) ? "H " : "L ");
+      sprintf(temp_msg, "z_min: %s ", _CHK(XGpio_DiscreteRead(&ShieldInst, 1), Z_MIN_PIN) != Z_ENDSTOP_INVERT ? "H " : "L ");
+      uart_print(uart_dev0, temp_msg, strlen(temp_msg));
 #endif
 #if (Z_MAX_PIN > -1)
       //showString(PSTR("z_max:"));
       //Serial.print((READ(Z_MAX_PIN)^Z_ENDSTOP_INVERT)?"H ":"L ");
+      sprintf(temp_msg, "z_max: %s ", _CHK(XGpio_DiscreteRead(&ShieldInst, 1), Z_MAX_PIN) != Z_ENDSTOP_INVERT ? "H " : "L ");
+      uart_print(uart_dev0, temp_msg, strlen(temp_msg));
 #endif
 
       //showString(PSTR("\r\n"));
@@ -2539,41 +2615,35 @@ void process_commands() {
       //Serial.println(FreeRam1());
       break;
 
-    case 700: //Versatile command for debug
-      // printf("gpio_read:%d\r\n",XGpio_DiscreteRead(&ShieldInst, 1));
-      // printf("xmax_pin:%d\r\n",X_MAX_PIN);
-      // printf("xmax_pin_read:%d\r\n",_CHK(XGpio_DiscreteRead(&ShieldInst, 1), X_MAX_PIN));
+    case 700: //UV LED ON
+      uart_print(uart_dev0, "UV LED ON\r\n", strlen("UV LED ON\r\n")); 
       break;
 
-    case 701:
-      dumpAllPins();
+    case 701: //UV LED OFF
+      uart_print(uart_dev0, "UV LED OFF\r\n", strlen("UV LED OFF\r\n")); 
       break;
 
-    case 702:
-      // printf("[GPIO status]:%d\r\n",XGpio_DiscreteRead(&ShieldInst, 1));
-      // printf("xmax endstop:%d\r\n",_CHK(XGpio_DiscreteRead(&ShieldInst, 1), X_MAX_PIN));
-      // printf("ymax endstop:%d\r\n",_CHK(XGpio_DiscreteRead(&ShieldInst, 1), Y_MAX_PIN));
-      // printf("zmax endstop:%d\r\n",_CHK(XGpio_DiscreteRead(&ShieldInst, 1), Z_MAX_PIN));
-      // printf("\r\n");
-      // printf("xmin endstop:%d\r\n",_CHK(XGpio_DiscreteRead(&ShieldInst, 1), X_MIN_PIN));
-      // printf("ymin endstop:%d\r\n",_CHK(XGpio_DiscreteRead(&ShieldInst, 1), Y_MIN_PIN));
-      // printf("zmin endstop:%d\r\n",_CHK(XGpio_DiscreteRead(&ShieldInst, 1), Z_MIN_PIN));
+    case 702: // Toggle dispenser
+      uart_print(uart_dev0, "Toggle dispenser\r\n", strlen("Toggle dispenser\r\n")); 
       break;
 
-    case 703:
-      // printf("data direction:%d\r\n",XGpio_GetDataDirection(&ShieldInst, 1));
+    case 703: // Change dispenser discharge pressure
+      int target_pressure;
+      if (code_seen('S')){
+        target_pressure = code_value();
+      }
+      update_dispenser_pressure(1, target_pressure); 
       break;
 
-    case 704:
+    case 708:
       homeaxis(X_AXIS);
       break;
-    case 705:
+    case 709:
       homeaxis(Y_AXIS);
       break;
-    case 706:
+    case 710:
       homeaxis(Z_AXIS);
       break;
-
 
 
     default:
@@ -2596,6 +2666,35 @@ void process_commands() {
 
   }
 
+
+  void update_dispenser_pressure(int channel, int target_pressure){
+     //String base_command = "0EPH  CH001P";
+     sprintf(temp_msg, "0EPH  CH001P%d", target_pressure);
+     int string_length = strlen(temp_msg);
+     
+     byte result = 0x00;
+     for (int i=0;i<string_length;i++){
+     	result = result - temp_msg[i];
+     }
+     // byte result = 0x00 - 0x30 - 0x34 - 0x44 - 0x49 - 0x20 - 0x20; //-305->two's complement of 305->0b011001111->0xCF
+     byte ubyte = ((result & 0b11110000) >> 4) & 0b11111111;
+     byte lbyte = result & 0b00001111;
+     
+     char ubyteChar[2];
+     char lbyteChar[2];
+     sprintf(ubyteChar,"%x",ubyte);
+     sprintf(lbyteChar,"%x",lbyte);
+     
+     rs232c_write(ENQ);
+     usleep(100);
+     rs232c_write(STX); 
+     rs232c_print(temp_msg, strlen(temp_msg)); //do not send null terminator
+     rs232c_write(ubyteChar[0]);
+     rs232c_write(lbyteChar[0]);
+     rs232c_write(ETX); 
+     usleep(100);
+     rs232c_write(EOT);
+  }
 
   void FlushSerialRequestResend() {
     //always commented out below
