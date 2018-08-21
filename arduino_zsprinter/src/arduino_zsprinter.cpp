@@ -186,6 +186,7 @@ extern "C" {
 uart uart_dev0;
 char *ok_msg = "ok\r\n";
 char temp_msg[32];
+char temp_msg2[64];
 XUartLite UartLite1;
 char dispenser_command_bytes[1];
 
@@ -427,6 +428,9 @@ static unsigned short virtual_steps_y = 0;
 static unsigned short virtual_steps_z = 0;
 
 bool home_all_axis = true;
+bool home_x_axis = false;
+bool home_y_axis = false;
+bool home_z_axis = false;
 //unsigned ?? ToDo: Check
 int feedrate = 1500,
     next_feedrate, saved_feedrate;
@@ -598,6 +602,7 @@ static bool retract_feedrate_aktiv = false;
   #define BUFLEN_ACCUM_FINISHED_DATA_ADDR 110
   #define NEXT_BUFFER_HEAD_ADDR 111
   #define HOTEND_TEMP_RAW_ADDR 112
+
 
 //------------------------------------------------
 //Init the SD card 
@@ -1874,30 +1879,29 @@ void process_commands() {
       feedrate = 0;
       is_homing = true;
 
-      //home_all_axis =
-      //!((code_seen(axis_codes[0])) || (code_seen(axis_codes[1]))
-      //  || (code_seen(axis_codes[2])));
 
-      //if ((home_all_axis) || (code_seen(axis_codes[X_AXIS])))
-      //  homing_routine(X_AXIS);
-
-      //if ((home_all_axis) || (code_seen(axis_codes[Y_AXIS])))
-      //  homing_routine(Y_AXIS);
-
-      //if ((home_all_axis) || (code_seen(axis_codes[Z_AXIS])))
-      //  homing_routine(Z_AXIS);
-
-      /**
-       * A delta can only safely home all axes at the same time
-       */
-      // Pretend the current position is 0,0,0
-      // This is like quick_home_xy() but for 3 towers.
-      current_position[X_AXIS] = current_position[Y_AXIS] = current_position[Z_AXIS] = 0.0;
-      sync_plan_position();
-      // Move all carriages up together until the first endstop is hit.
-      current_position[X_AXIS] = current_position[Y_AXIS] = current_position[Z_AXIS] = 3.0 * (Z_MAX_LENGTH);
-      feedrate_mm_m = 1.732 * homing_feedrate_mm_m[X_AXIS];
-      line_to_current_position();
+      #ifdef DELTA
+        /**
+         * A delta can only safely home all axes at the same time
+         */
+        // Pretend the current position is 0,0,0
+        // This is like quick_home_xy() but for 3 towers.
+        current_position[X_AXIS] = current_position[Y_AXIS] = current_position[Z_AXIS] = 0.0;
+        sync_plan_position();
+        // Move all carriages up together until the first endstop is hit.
+        current_position[X_AXIS] = current_position[Y_AXIS] = current_position[Z_AXIS] = 3.0 * (Z_MAX_LENGTH);
+        feedrate_mm_m = 1.732 * homing_feedrate_mm_m[X_AXIS];
+        line_to_current_position();
+      #else 
+        home_all_axis = !((code_seen(axis_codes[X_AXIS])) || (code_seen(axis_codes[Y_AXIS])) || (code_seen(axis_codes[Z_AXIS])));
+        if(home_all_axis){
+          home_x_axis = home_y_axis = home_z_axis = true;
+        } else {
+          home_x_axis = code_seen(axis_codes[X_AXIS]);
+          home_y_axis = code_seen(axis_codes[Y_AXIS]);
+          home_z_axis = code_seen(axis_codes[Z_AXIS]);
+        }
+      #endif
 
       return;
 //       st_synchronize();
@@ -2500,6 +2504,19 @@ void process_commands() {
       //Serial.print(current_position[2]);
       //showString(PSTR("E:"));
       //Serial.println(current_position[3]);
+      uart_print(uart_dev0,"X:",strlen(("X:")));
+      sprintf(temp_msg, "%.2f ",strlen(temp_msg));
+      uart_print(uart_dev0,temp_msg,strlen(temp_msg));
+      uart_print(uart_dev0,"Y:",strlen(("Y:")));
+      sprintf(temp_msg,"%.2f ",current_position[1]);
+      uart_print(uart_dev0,temp_msg,strlen(temp_msg));
+      uart_print(uart_dev0,"Z:",strlen(("Z:")));
+      sprintf(temp_msg,"%.2f ",current_position[2]);
+      uart_print(uart_dev0,temp_msg,strlen(temp_msg));
+      uart_print(uart_dev0,"E:",strlen(("E:")));
+      sprintf(temp_msg,"%.2f",current_position[3]);
+      uart_print(uart_dev0,temp_msg,strlen(temp_msg));
+
       MAILBOX_DATA_FLOAT(X_DATA_ADDR) = current_position[0];
       MAILBOX_DATA_FLOAT(Y_DATA_ADDR) = current_position[1];
       MAILBOX_DATA_FLOAT(Z_DATA_ADDR) = current_position[2];
@@ -2897,14 +2914,17 @@ void process_commands() {
       help_feedrate = ((long) feedrate * (long) 100);
     }
 
+    #ifdef DELTA
     //TODO: IK calculation should be segmented by fraction
     inverse_kinematics(destination);
-
     //plan_buffer_line(destination[X_AXIS], destination[Y_AXIS],
     //    destination[Z_AXIS], destination[E_AXIS], help_feedrate / 6000.0);
-
     plan_buffer_line(delta[X_AXIS], delta[Y_AXIS],
         delta[Z_AXIS], destination[E_AXIS], help_feedrate / 6000.0);
+    #else 
+      plan_buffer_line(destination[X_AXIS], destination[Y_AXIS],
+          destination[Z_AXIS], destination[E_AXIS], help_feedrate / 6000.0);
+    #endif
 
     for (int i = 0; i < NUM_AXIS; i++) {
       current_position[i] = destination[i];
@@ -5018,12 +5038,13 @@ else if (e_steps > 0) {
   {
     //20Hz cycle; this is used as main loop (which is parallel to main) 
   	if(is_homing){
-  		if(block_buffer_head==block_buffer_tail){ //pulse generation completed (alternative of st_synchronize)
-			int min_pin, max_pin, home_dir, max_length, home_bump_mm;
-  			float axis_homing_feedrate_mm_m;
+           #ifdef DELTA
+  	 if(block_buffer_head==block_buffer_tail){ //pulse generation completed (alternative of st_synchronize)
+	 int min_pin, max_pin, home_dir, max_length, home_bump_mm;
+  	 float axis_homing_feedrate_mm_m;
 
-  			if(homing_status==0){ //X_AXIS 1st
-         		endstop_x_hit = false;
+  	   if(homing_status==0){ //X_AXIS 1st
+         	endstop_x_hit = false;
                 endstop_y_hit = false;
                 endstop_z_hit = false;
                 current_position[X_AXIS] = current_position[Y_AXIS] = current_position[Z_AXIS] = 0.0;
@@ -5052,9 +5073,9 @@ else if (e_steps > 0) {
                 axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
 	
             	current_position[X_AXIS] = 0;
-				sync_plan_position();
-  				// Move away from the endstop by the axis HOME_BUMP_MM
-  				line_to_axis_pos(X_AXIS, -home_bump_mm * home_dir);
+		sync_plan_position();
+  		// Move away from the endstop by the axis HOME_BUMP_MM
+  		line_to_axis_pos(X_AXIS, -home_bump_mm * home_dir);
                 homing_status++;
             } else if(homing_status==2) { //X_AXIS 3rd
                 //Read X_AXIS settings
@@ -5066,27 +5087,27 @@ else if (e_steps > 0) {
                 axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
 	
             	// Move slowly towards the endstop until triggered
-  				line_to_axis_pos(X_AXIS, 2 * home_bump_mm * home_dir, axis_homing_feedrate_mm_m / 10);
-  				// reset current_position to 0 to reflect hitting endpoint
-  				current_position[X_AXIS] = 0;
-  				sync_plan_position();
-  				// not necessary
-  				//set_axis_is_at_home(axis);
-  				//sync_plan_position_delta();
-  				sync_plan_position();
-  				destination[X_AXIS] = current_position[X_AXIS];
-    			endstop_x_hit = false; // clear endstop hit flags
+  		line_to_axis_pos(X_AXIS, 2 * home_bump_mm * home_dir, axis_homing_feedrate_mm_m / 10);
+  		// reset current_position to 0 to reflect hitting endpoint
+  		current_position[X_AXIS] = 0;
+  		sync_plan_position();
+  		// not necessary
+  		//set_axis_is_at_home(axis);
+  		//sync_plan_position_delta();
+  		sync_plan_position();
+  		destination[X_AXIS] = current_position[X_AXIS];
+    		endstop_x_hit = false; // clear endstop hit flags
                 homing_status++;
             } else if(homing_status==3){ // Y_AXIS 1st
                 //Read Y_AXIS settings
             	min_pin = Y_MIN_PIN;
-				max_pin = Y_MAX_PIN;
-    			home_dir = Y_HOME_DIR;
-    			max_length = Z_MAX_LENGTH;
-    			home_bump_mm = Y_HOME_BUMP_MM;
-    			axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
+		max_pin = Y_MAX_PIN;
+    		home_dir = Y_HOME_DIR;
+    		max_length = Z_MAX_LENGTH;
+    		home_bump_mm = Y_HOME_BUMP_MM;
+    		axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
 
-    			// Set the axis position as setup for the move
+    		// Set the axis position as setup for the move
                 current_position[Y_AXIS] = 0;
                 sync_plan_position();
                 // Move towards the endstop until an endstop is triggered
@@ -5095,48 +5116,48 @@ else if (e_steps > 0) {
             } else if(homing_status==4) { // Y_AXIS 2nd
             	//Read Y_AXIS settings
             	min_pin = Y_MIN_PIN;
-				max_pin = Y_MAX_PIN;
-    			home_dir = Y_HOME_DIR;
-    			max_length = Z_MAX_LENGTH;
-    			home_bump_mm = Y_HOME_BUMP_MM;
-    			axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
+		max_pin = Y_MAX_PIN;
+    		home_dir = Y_HOME_DIR;
+    		max_length = Z_MAX_LENGTH;
+    		home_bump_mm = Y_HOME_BUMP_MM;
+    		axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
 
             	current_position[Y_AXIS] = 0;
-				sync_plan_position();
-  				// Move away from the endstop by the axis HOME_BUMP_MM
-  				line_to_axis_pos(Y_AXIS, -home_bump_mm * home_dir);
+		sync_plan_position();
+  		// Move away from the endstop by the axis HOME_BUMP_MM
+  		line_to_axis_pos(Y_AXIS, -home_bump_mm * home_dir);
                 homing_status++;
             } else if(homing_status==5) { // Y_AXIS 3rd
             	//Read Y_AXIS settings
             	min_pin = Y_MIN_PIN;
-				max_pin = Y_MAX_PIN;
-    			home_dir = Y_HOME_DIR;
-    			max_length = Z_MAX_LENGTH;
-    			home_bump_mm = Y_HOME_BUMP_MM;
-    			axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
+		max_pin = Y_MAX_PIN;
+    		home_dir = Y_HOME_DIR;
+    		max_length = Z_MAX_LENGTH;
+    		home_bump_mm = Y_HOME_BUMP_MM;
+    		axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
 
-    			// Move slowly towards the endstop until triggered
-  				line_to_axis_pos(Y_AXIS, 2 * home_bump_mm * home_dir, axis_homing_feedrate_mm_m / 10);
-  				// reset current_position to 0 to reflect hitting endpoint
-  				current_position[Y_AXIS] = 0;
-  				sync_plan_position();
-  				// not necessary
-  				//set_axis_is_at_home(axis);
-  				//sync_plan_position_delta();
-  				sync_plan_position();
-  				destination[Y_AXIS] = current_position[Y_AXIS];
-    			endstop_y_hit = false; // clear endstop hit flags
+    		// Move slowly towards the endstop until triggered
+  		line_to_axis_pos(Y_AXIS, 2 * home_bump_mm * home_dir, axis_homing_feedrate_mm_m / 10);
+  		// reset current_position to 0 to reflect hitting endpoint
+  		current_position[Y_AXIS] = 0;
+  		sync_plan_position();
+  		// not necessary
+  		//set_axis_is_at_home(axis);
+  		//sync_plan_position_delta();
+  		sync_plan_position();
+  		destination[Y_AXIS] = current_position[Y_AXIS];
+    		endstop_y_hit = false; // clear endstop hit flags
                 homing_status++;
             } else if(homing_status==6){ // Z_AXIS 1st
             	//Read Z_AXIS settings
             	min_pin = Z_MIN_PIN;
-			    max_pin = Z_MAX_PIN;
-    			home_dir = Z_HOME_DIR;
-    			max_length = Z_MAX_LENGTH;
-    			home_bump_mm = Z_HOME_BUMP_MM;
-    			axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
+		max_pin = Z_MAX_PIN;
+    		home_dir = Z_HOME_DIR;
+    		max_length = Z_MAX_LENGTH;
+    		home_bump_mm = Z_HOME_BUMP_MM;
+    		axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
 
-    			// Set the axis position as setup for the move
+    		// Set the axis position as setup for the move
                 current_position[Z_AXIS] = 0;
                 sync_plan_position();
                 // Move towards the endstop until an endstop is triggered
@@ -5146,38 +5167,38 @@ else if (e_steps > 0) {
             } else if(homing_status==7){ // Z_AXIS 2nd 
             	//Read Z_AXIS settings
             	min_pin = Z_MIN_PIN;
-			    max_pin = Z_MAX_PIN;
-    			home_dir = Z_HOME_DIR;
-    			max_length = Z_MAX_LENGTH;
-    			home_bump_mm = Z_HOME_BUMP_MM;
-    			axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
+		max_pin = Z_MAX_PIN;
+    		home_dir = Z_HOME_DIR;
+    		max_length = Z_MAX_LENGTH;
+    		home_bump_mm = Z_HOME_BUMP_MM;
+    		axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
 
-    			current_position[Z_AXIS] = 0;
-				sync_plan_position();
-  				// Move away from the endstop by the axis HOME_BUMP_MM
-  				line_to_axis_pos(Z_AXIS, -home_bump_mm * home_dir);
+    		current_position[Z_AXIS] = 0;
+		sync_plan_position();
+  		// Move away from the endstop by the axis HOME_BUMP_MM
+  		line_to_axis_pos(Z_AXIS, -home_bump_mm * home_dir);
 
                 homing_status++;
             } else if(homing_status==8){ // Z_AXIS 3rd
             	//Read Z_AXIS settings
             	min_pin = Z_MIN_PIN;
-			    max_pin = Z_MAX_PIN;
-    			home_dir = Z_HOME_DIR;
-    			max_length = Z_MAX_LENGTH;
-    			home_bump_mm = Z_HOME_BUMP_MM;
-    			axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
+		max_pin = Z_MAX_PIN;
+    		home_dir = Z_HOME_DIR;
+    		max_length = Z_MAX_LENGTH;
+    		home_bump_mm = Z_HOME_BUMP_MM;
+    		axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
 
-    			// Move slowly towards the endstop until triggered
-  				line_to_axis_pos(Z_AXIS, 2 * home_bump_mm * home_dir, axis_homing_feedrate_mm_m / 10);
-  				// reset current_position to 0 to reflect hitting endpoint
-  				current_position[Z_AXIS] = 0;
-  				sync_plan_position();
-  				// not necessary
-  				//set_axis_is_at_home(axis);
-  				//sync_plan_position_delta();
-  				sync_plan_position();
-  				destination[Z_AXIS] = current_position[Z_AXIS];
-    			endstop_z_hit = false; // clear endstop hit flags
+    		// Move slowly towards the endstop until triggered
+  		line_to_axis_pos(Z_AXIS, 2 * home_bump_mm * home_dir, axis_homing_feedrate_mm_m / 10);
+  		// reset current_position to 0 to reflect hitting endpoint
+  		current_position[Z_AXIS] = 0;
+  		sync_plan_position();
+  		// not necessary
+  		//set_axis_is_at_home(axis);
+  		//sync_plan_position_delta();
+  		sync_plan_position();
+  		destination[Z_AXIS] = current_position[Z_AXIS];
+    		endstop_z_hit = false; // clear endstop hit flags
 
                 homing_status++;
             } else if(homing_status==9){
@@ -5221,7 +5242,168 @@ else if (e_steps > 0) {
             	MAILBOX_CMD_ADDR = 0x0;
                 uart_write(uart_dev0, ok_msg, strlen(ok_msg));  
             }
-        }
+          }
+        // Gantry type
+        #else
+  	    if(block_buffer_head==block_buffer_tail){ //pulse generation completed (alternative of st_synchronize)
+		int min_pin, max_pin, home_dir, max_length, home_bump_mm;
+  		float axis_homing_feedrate_mm_m;
+
+  	    if(home_x_axis){ //X_AXIS 1st
+              //Read X_AXIS settings
+              min_pin = X_MIN_PIN;
+              max_pin = X_MAX_PIN;
+              home_dir = X_HOME_DIR;
+              max_length = X_MAX_LENGTH;
+              home_bump_mm = X_HOME_BUMP_MM;
+              axis_homing_feedrate_mm_m = homing_feedrate_mm_m[X_AXIS];
+
+              if(homing_status==0){
+                uart_print(uart_dev0,"x1\r\n",strlen("x1\r\n"));
+         	endstop_x_hit = false;
+                current_position[X_AXIS] = current_position[Y_AXIS] = current_position[Z_AXIS] = 0.0;
+
+                // Set the axis position as setup for the move
+                current_position[X_AXIS] = 0;
+                sync_plan_position();
+                // Move towards the endstop until an endstop is triggered
+                line_to_axis_pos(X_AXIS, 1.5 * max_length * home_dir);
+                homing_status++;
+              } else if(homing_status==1) {  //X_AXIS 2nd
+                uart_print(uart_dev0,"x2\r\n",strlen("x2\r\n"));
+              	current_position[X_AXIS] = 0;
+	          sync_plan_position();
+  	          // Move away from the endstop by the axis HOME_BUMP_MM
+  	          line_to_axis_pos(X_AXIS, -home_bump_mm * home_dir);
+                  homing_status++;
+              } else if(homing_status==2) { //X_AXIS 3rd
+                uart_print(uart_dev0,"x3\r\n",strlen("x3\r\n"));
+              	// Move slowly towards the endstop until triggered
+  	          line_to_axis_pos(X_AXIS, 2 * home_bump_mm * home_dir, axis_homing_feedrate_mm_m / 10);
+  	          // reset current_position to 0 to reflect hitting endpoint
+  	          current_position[X_AXIS] = 0;
+  	          sync_plan_position();
+  	          // not necessary
+  	          //set_axis_is_at_home(axis);
+  	          //sync_plan_position_delta();
+  	          sync_plan_position();
+  	          destination[X_AXIS] = current_position[X_AXIS];
+    	          endstop_x_hit = false; // clear endstop hit flags
+                  homing_status=0;
+                  home_x_axis = false;
+              } 
+           } else if (home_y_axis) { // Y_AXIS 1st
+              //Read Y_AXIS settings
+              min_pin = Y_MIN_PIN;
+	      max_pin = Y_MAX_PIN;
+    	      home_dir = Y_HOME_DIR;
+    	      max_length = Y_MAX_LENGTH;
+    	      home_bump_mm = Y_HOME_BUMP_MM;
+    	      axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Y_AXIS];
+              if(homing_status==0){
+              uart_print(uart_dev0,"y1\r\n",strlen("y1\r\n"));
+                endstop_y_hit = false;
+    		// Set the axis position as setup for the move
+                current_position[Y_AXIS] = 0;
+                sync_plan_position();
+                // Move towards the endstop until an endstop is triggered
+                line_to_axis_pos(Y_AXIS, 1.5 * max_length * home_dir);
+                homing_status++;
+            } else if(homing_status==1) { // Y_AXIS 2nd
+              uart_print(uart_dev0,"y2\r\n",strlen("y2\r\n"));
+            	current_position[Y_AXIS] = 0;
+		sync_plan_position();
+  		// Move away from the endstop by the axis HOME_BUMP_MM
+  		line_to_axis_pos(Y_AXIS, -home_bump_mm * home_dir);
+                homing_status++;
+            } else if(homing_status==2) { // Y_AXIS 3rd
+              uart_print(uart_dev0,"y3\r\n",strlen("y3\r\n"));
+    		// Move slowly towards the endstop until triggered
+  		line_to_axis_pos(Y_AXIS, 2 * home_bump_mm * home_dir, axis_homing_feedrate_mm_m / 10);
+  		// reset current_position to 0 to reflect hitting endpoint
+  		current_position[Y_AXIS] = 0;
+  		sync_plan_position();
+  		// not necessary
+  		//set_axis_is_at_home(axis);
+  		//sync_plan_position_delta();
+  		sync_plan_position();
+  		destination[Y_AXIS] = current_position[Y_AXIS];
+    		endstop_y_hit = false; // clear endstop hit flags
+                homing_status=0;
+                home_y_axis = false;
+              }
+            } else if (home_z_axis) {
+               //Read Z_AXIS settings
+               min_pin = Z_MIN_PIN;
+               max_pin = Z_MAX_PIN;
+               home_dir = Z_HOME_DIR;
+               max_length = Z_MAX_LENGTH;
+               home_bump_mm = Z_HOME_BUMP_MM;
+               axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
+
+              if(homing_status==0) { // Z_AXIS 1st
+              uart_print(uart_dev0,"z1\r\n",strlen("z1\r\n"));
+    		// Set the axis position as setup for the move
+                current_position[Z_AXIS] = 0;
+                sync_plan_position();
+                // Move towards the endstop until an endstop is triggered
+                line_to_axis_pos(Z_AXIS, 1.5 * max_length * home_dir);
+                homing_status++;
+              } else if(homing_status==1){ // Z_AXIS 2nd 
+              uart_print(uart_dev0,"z2\r\n",strlen("z2\r\n"));
+    	        current_position[Z_AXIS] = 0;
+	        sync_plan_position();
+  	        // Move away from the endstop by the axis HOME_BUMP_MM
+  	        line_to_axis_pos(Z_AXIS, -home_bump_mm * home_dir);
+
+                homing_status++;
+              } else if(homing_status==2) { // Z_AXIS 3rd
+              uart_print(uart_dev0,"z3\r\n",strlen("z3\r\n"));
+    	        // Move slowly towards the endstop until triggered
+  	        line_to_axis_pos(Z_AXIS, 2 * home_bump_mm * home_dir, axis_homing_feedrate_mm_m / 10);
+  	        // reset current_position to 0 to reflect hitting endpoint
+  	        current_position[Z_AXIS] = 0;
+  	        sync_plan_position();
+  	        // not necessary
+  	        //set_axis_is_at_home(axis);
+  	        //sync_plan_position_delta();
+  	        sync_plan_position();
+  	        destination[Z_AXIS] = current_position[Z_AXIS];
+    	        endstop_z_hit = false; // clear endstop hit flags
+
+                homing_status==0;
+                home_z_axis = false;
+              }
+            } else  { //all axis homed
+              uart_print(uart_dev0,"done\r\n",strlen("done\r\n"));
+                // sync_plan_position_delta();
+                sync_plan_position();
+                // set the current position as top
+                // trigger sync_plan_position_delta() to exclude orthogonal coordinates
+                current_position[X_AXIS] = current_position[Y_AXIS] = current_position[Z_AXIS] = 0.0;
+                destination[X_AXIS] = current_position[X_AXIS];
+                destination[Y_AXIS] = current_position[Y_AXIS];
+                destination[Z_AXIS] = current_position[Z_AXIS];
+                destination[E_AXIS] = current_position[E_AXIS];
+                sync_plan_position();
+
+          #ifdef ENDSTOPS_ONLY_FOR_HOMING
+                enable_endstops(false);
+          #endif
+
+                is_homing = false;
+                feedrate = saved_feedrate;
+                feedmultiply = saved_feedmultiply;
+
+                previous_millis_cmd = millis();
+
+            	homing_status = 0;
+            	clear_to_send = true;
+            	MAILBOX_CMD_ADDR = 0x0;
+                uart_write(uart_dev0, ok_msg, strlen(ok_msg));  
+            }
+          }
+        #endif
   	} else if(waiting_until_setpoint) {
         if ((millis() - codenum_heater) > 1000) { //Print Temp Reading every 1 second while heating up/cooling down
            bool still_waiting = target_direction_heating ? (current_raw < target_raw) : (current_raw > target_raw);

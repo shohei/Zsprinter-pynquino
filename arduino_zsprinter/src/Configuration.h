@@ -79,12 +79,12 @@
 // The pullups are needed if you directly connect a mechanical endswitch between the signal and ground pins.
 //If your axes are only moving in one direction, make sure the endstops are connected properly.
 //If your axes move in one direction ONLY when the endstops are triggered, set [XYZ]_ENDSTOP_INVERT to true here:
-const bool X_ENDSTOP_INVERT = false;
-const bool Y_ENDSTOP_INVERT = false;
-const bool Z_ENDSTOP_INVERT = false;
-// const bool X_ENDSTOP_INVERT = true;
-// const bool Y_ENDSTOP_INVERT = true;
-// const bool Z_ENDSTOP_INVERT = true;
+//const bool X_ENDSTOP_INVERT = false;
+//const bool Y_ENDSTOP_INVERT = false;
+//const bool Z_ENDSTOP_INVERT = false;
+const bool X_ENDSTOP_INVERT = true;
+const bool Y_ENDSTOP_INVERT = true;
+const bool Z_ENDSTOP_INVERT = true;
 
 // This determines the communication speed of the printer
 #define BAUDRATE 115200
@@ -154,18 +154,18 @@ const bool DISABLE_E = false;
 //-----------------------------------------------------------------------
 // Inverting axis direction
 //-----------------------------------------------------------------------
-const bool INVERT_X_DIR = false;
-const bool INVERT_Y_DIR = false;
-const bool INVERT_Z_DIR = true;
+const bool INVERT_X_DIR = true;
+const bool INVERT_Y_DIR = true;
+const bool INVERT_Z_DIR = false;
 const bool INVERT_E_DIR = false;
 
 //-----------------------------------------------------------------------
 //// ENDSTOP SETTINGS:
 //-----------------------------------------------------------------------
 // Sets direction of endstops when homing; 1=MAX, -1=MIN
-#define X_HOME_DIR 1
-#define Y_HOME_DIR 1
-#define Z_HOME_DIR 1
+#define X_HOME_DIR -1
+#define Y_HOME_DIR -1
+#define Z_HOME_DIR -1
 
 #define ENDSTOPS_ONLY_FOR_HOMING // If defined the endstops will only be used for homing
 
