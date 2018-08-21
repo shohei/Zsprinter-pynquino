@@ -22,6 +22,7 @@ src/heater.o src/heater.d: ../src/heater.cpp ../src/heater.h \
  ../../bsp_iop_arduino/iop_arduino_mb/include/wiring_shift.h \
  ../../bsp_iop_arduino/iop_arduino_mb/include/pins_arduino.h \
  ../../bsp_iop_arduino/iop_arduino_mb/include/xil_types.h \
+ ../../bsp_iop_arduino/iop_arduino_mb/include/uart.h \
  ../../bsp_iop_arduino/iop_arduino_mb/include/xil_io.h
 
 ../src/heater.h:
@@ -77,5 +78,7 @@ src/heater.o src/heater.d: ../src/heater.cpp ../src/heater.h \
 ../../bsp_iop_arduino/iop_arduino_mb/include/pins_arduino.h:
 
 ../../bsp_iop_arduino/iop_arduino_mb/include/xil_types.h:
+
+../../bsp_iop_arduino/iop_arduino_mb/include/uart.h:
 
 ../../bsp_iop_arduino/iop_arduino_mb/include/xil_io.h:

@@ -34,8 +34,6 @@
 #define THERMISTORHEATER 9
 #define THERMISTORBED 9
 
-//#define DELTA 
-
 // AXIS STEPS PER ROTATION
 #define BELT_PITCH 2
 /** \brief Number of teeth on X, Y and Z tower pulleys */
@@ -55,11 +53,11 @@
   Mega. */
 //#define MAX_DELTA_SEGMENTS_PER_LINE 30
 // Calculations
-// DEFAULT_AXIS_STEPS_PER_UNIT:  { 80, 80, 398.2, 94.4962144, 1000 } // extracted from KJ's implementation 
-#define XAXIS_STEPS_PER_MM 80 
-#define YAXIS_STEPS_PER_MM 80 
-#define ZAXIS_STEPS_PER_MM 398.2 
-#define EAXIS_STEPS_PER_MM 1000 
+#define AXIS_STEPS_PER_MM ((float)(MICRO_STEPS * STEPS_PER_ROTATION) / PULLEY_CIRCUMFERENCE) //160
+#define XAXIS_STEPS_PER_MM AXIS_STEPS_PER_MM
+#define YAXIS_STEPS_PER_MM AXIS_STEPS_PER_MM
+#define ZAXIS_STEPS_PER_MM AXIS_STEPS_PER_MM
+#define EAXIS_STEPS_PER_MM 182 //182:160*92.65/80 (original: 700)
 // #define EAXIS_STEPS_PER_MM 700 //182:160*92.65/80 (original: 700)
 
 //// Calibration variables
@@ -215,7 +213,7 @@ const bool max_software_endstops = true; //If true, axis won't move to coordinat
 //-----------------------------------------------------------------------
 const int NUM_AXIS = 4; // The axis order in all axis related arrays is X, Y, Z, E
 //#define _MAX_FEEDRATE {400, 400, 2, 45}       // (mm/sec)
-#define _MAX_FEEDRATE {500, 500, 5, 25}       // (mm/sec)
+#define _MAX_FEEDRATE {400, 400, 400, 45}       // (mm/sec)
 #define _HOMING_FEEDRATE {1500,1500,1500}      // (mm/min) !!
 #define _AXIS_RELATIVE_MODES {false, false, false, false}
 #define HOMING_FEEDRATE_Z  (50*60)
@@ -252,16 +250,17 @@ const long min_time_before_dir_change = 30; //milliseconds
 //-----------------------------------------------------------------------
 // X, Y, Z, E maximum start speed for accelerated moves. E default values are good for skeinforge 40+, for older versions raise them a lot.
 #define _ACCELERATION 1000         // Axis Normal acceleration mm/s^2
+#define _ACCELERATION 1000         // Axis Normal acceleration mm/s^2
 //#define _RETRACT_ACCELERATION 2000 // Extruder Normal acceleration mm/s^2
 #define _RETRACT_ACCELERATION 1000 // Extruder Normal acceleration mm/s^2
-#define _MAX_XY_JERK 30.0
-#define _MAX_Z_JERK 0.4
+#define _MAX_XY_JERK 20.0
+#define _MAX_Z_JERK 20.0
 //#define _MAX_Z_JERK 0.4
 //#define _MAX_E_JERK 5.0    // (mm/sec)
-#define _MAX_E_JERK 30.0    // (mm/sec)
+#define _MAX_E_JERK 20.0    // (mm/sec)
 //#define _MAX_START_SPEED_UNITS_PER_SECOND {25.0,25.0,0.2,10.0}
 //#define _MAX_ACCELERATION_UNITS_PER_SQ_SECOND {5000,5000,50,5000}    // X, Y, Z and E max acceleration in mm/s^2 for printing moves or retracts
-#define _MAX_ACCELERATION_UNITS_PER_SQ_SECOND {5000,5000,50,5000}    // X, Y, Z and E max acceleration in mm/s^2 for printing moves or retracts
+#define _MAX_ACCELERATION_UNITS_PER_SQ_SECOND {5000,5000,5000,5000}    // X, Y, Z and E max acceleration in mm/s^2 for printing moves or retracts
 
 
 // Minimum planner junction speed. Sets the default minimum speed the planner plans for at the end

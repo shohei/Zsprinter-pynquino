@@ -11,6 +11,8 @@ src/arduino_zsprinter.o src/arduino_zsprinter.d: \
  ../../bsp_iop_arduino/iop_arduino_mb/include/wiring_shift.h \
  ../../bsp_iop_arduino/iop_arduino_mb/include/pins_arduino.h \
  ../../bsp_iop_arduino/iop_arduino_mb/include/xil_types.h \
+ ../../bsp_iop_arduino/iop_arduino_mb/include/uart.h \
+ ../../bsp_iop_arduino/iop_arduino_mb/include/xparameters.h \
  ../src/speed_lookuptable.h ../src/heater.h ../src/thermistortables.h \
  ../../bsp_iop_arduino/iop_arduino_mb/include/xsysmon.h \
  ../../bsp_iop_arduino/iop_arduino_mb/include/xil_types.h \
@@ -22,7 +24,6 @@ src/arduino_zsprinter.o src/arduino_zsprinter.d: \
  ../../bsp_iop_arduino/iop_arduino_mb/include/xparameters.h \
  ../../bsp_iop_arduino/iop_arduino_mb/include/mb_interface.h \
  ../../bsp_iop_arduino/iop_arduino_mb/include/xil_exception.h \
- ../../bsp_iop_arduino/iop_arduino_mb/include/xparameters.h \
  ../../bsp_iop_arduino/iop_arduino_mb/include/xtmrctr.h \
  ../../bsp_iop_arduino/iop_arduino_mb/include/xtmrctr_l.h \
  ../../bsp_iop_arduino/iop_arduino_mb/include/xil_io.h \
@@ -35,7 +36,6 @@ src/arduino_zsprinter.o src/arduino_zsprinter.d: \
  ../../bsp_iop_arduino/iop_arduino_mb/include/timer.h \
  ../../bsp_iop_arduino/iop_arduino_mb/include/gpio.h \
  ../../bsp_iop_arduino/iop_arduino_mb/include/i2c.h \
- ../../bsp_iop_arduino/iop_arduino_mb/include/uart.h \
  ../../bsp_iop_arduino/iop_arduino_mb/include/xuartlite.h \
  ../../bsp_iop_arduino/iop_arduino_mb/include/xuartlite_l.h
 
@@ -67,6 +67,10 @@ src/arduino_zsprinter.o src/arduino_zsprinter.d: \
 
 ../../bsp_iop_arduino/iop_arduino_mb/include/xil_types.h:
 
+../../bsp_iop_arduino/iop_arduino_mb/include/uart.h:
+
+../../bsp_iop_arduino/iop_arduino_mb/include/xparameters.h:
+
 ../src/speed_lookuptable.h:
 
 ../src/heater.h:
@@ -93,8 +97,6 @@ src/arduino_zsprinter.o src/arduino_zsprinter.d: \
 
 ../../bsp_iop_arduino/iop_arduino_mb/include/xil_exception.h:
 
-../../bsp_iop_arduino/iop_arduino_mb/include/xparameters.h:
-
 ../../bsp_iop_arduino/iop_arduino_mb/include/xtmrctr.h:
 
 ../../bsp_iop_arduino/iop_arduino_mb/include/xtmrctr_l.h:
@@ -118,8 +120,6 @@ src/arduino_zsprinter.o src/arduino_zsprinter.d: \
 ../../bsp_iop_arduino/iop_arduino_mb/include/gpio.h:
 
 ../../bsp_iop_arduino/iop_arduino_mb/include/i2c.h:
-
-../../bsp_iop_arduino/iop_arduino_mb/include/uart.h:
 
 ../../bsp_iop_arduino/iop_arduino_mb/include/xuartlite.h:
 

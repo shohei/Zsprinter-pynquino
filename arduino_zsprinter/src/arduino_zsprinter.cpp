@@ -210,15 +210,16 @@ static int btn_value;
 #define STEP_X_PIN 2
 #define STEP_Y_PIN 3
 #define STEP_Z_PIN 4
-#define DIR_X_PIN 5
-#define DIR_Y_PIN 6
-#define DIR_Z_PIN 7
-#define X_MAX_PIN 9 
-#define Y_MAX_PIN 10 
-#define Z_MAX_PIN 11
-#define STEP_E_PIN 12
-#define DIR_E_PIN 13
-#define HEATER_PIN 18 //A4
+#define STEP_E_PIN 5 
+#define DIR_X_PIN 6
+#define DIR_Y_PIN 7
+#define DIR_Z_PIN 8
+#define DIR_E_PIN 9 
+#define X_MIN_PIN 10 
+#define Y_MIN_PIN 11 
+#define Z_MIN_PIN 12
+
+//#define HEATER_PIN 18 //A4
 #define THERMISTOR_PIN 19 //A5
 
 // ChipKit shield pins
@@ -291,6 +292,7 @@ void __cxa_pure_virtual() {
 }
 ;
 
+bool all_axis;
 
 // look here for descriptions of gcodes: http://linuxcnc.org/handbook/gcode/g-code.html
 // http://objects.reprap.org/wiki/Mendel_User_Manual:_RepRapGCodes
@@ -914,6 +916,61 @@ void showString (char *s)
 //------------------------------------------------
 // Init 
 //------------------------------------------------
+
+void enable_x(){
+  #if X_EN_PIN > -1
+    _CLR(ck_shields_data, X_EN_PIN);
+    XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+  #endif
+}
+
+void disable_x(){
+  #if X_EN_PIN > -1
+    _SET(ck_shields_data, X_EN_PIN);;
+    XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+  #endif
+}
+void enable_y(){
+  #if X_EN_PIN > -1
+    _CLR(ck_shields_data, Y_EN_PIN);
+    XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+  #endif
+}
+
+void disable_y(){
+  #if X_EN_PIN > -1
+    _SET(ck_shields_data, Y_EN_PIN);
+    XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+  #endif
+}
+
+void enable_z(){
+  #if X_EN_PIN > -1
+    _CLR(ck_shields_data, Z_EN_PIN);
+    XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+  #endif
+}
+
+void disable_z(){
+  #if X_EN_PIN > -1
+    _SET(ck_shields_data, Z_EN_PIN);
+    XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+  #endif
+}
+
+void enable_e(){
+  #if X_EN_PIN > -1
+    _CLR(ck_shields_data, E_EN_PIN);
+    XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+  #endif
+}
+
+void disable_e(){
+  #if X_EN_PIN > -1
+    _SET(ck_shields_data, E_EN_PIN);
+    XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+  #endif
+}
 
 void uart_print(uart dev, char * msg, unsigned int length){
    if(length<16){
@@ -1929,8 +1986,31 @@ void process_commands() {
 
   else if (code_seen('M')) {
     switch ((int) code_value()) {
-#ifdef SDSUPPORT
 
+    case 17: //enable all steppers
+     enable_x();
+     enable_y();
+     enable_z();
+     enable_e();
+     break;
+
+    case 18: //disable motors (similar to M84)
+     all_axis = !((code_seen('X')) || (code_seen('Y')) || (code_seen('Z')) || (code_seen('E')));
+     if (all_axis) {
+       disable_x();
+       disable_y();
+       disable_z();
+       disable_e();
+     } else {
+       //stepper.synchronize();
+       if (code_seen('X')) disable_x();
+       if (code_seen('Y')) disable_y();
+       if (code_seen('Z')) disable_z();
+       if (code_seen('E')) disable_e();
+     }
+      break;
+
+  #ifdef SDSUPPORT
     case 20: // M20 - list SD card
       //showString(PSTR("Begin file list\r\n"));
       root.ls();
@@ -2347,7 +2427,7 @@ void process_commands() {
       axis_relative_modes[3] = true;
       break;
     case 84:
-      st_synchronize(); // wait for all movements to finish
+      //st_synchronize(); // wait for all movements to finish
       if (code_seen('S')) {
         stepper_inactive_time = code_value() * 1000;
       } else if (code_seen('T')) {
@@ -4419,8 +4499,8 @@ else if (e_steps > 0) {
     {
       //      WRITE(HEATER_0_PIN,HIGH);
       //XGpio_DiscreteWrite(&HeaterInst, 1, 0x01);
-      _SET(shields_data , HEATER_PIN);
-      XGpio_DiscreteWrite(&ShieldInst, 1, shields_data);
+      _SET(ck_shields_data , HTR0_PIN);
+      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
       if(g_heater_pwm_val <= 253){
         //        OCR2A = g_heater_pwm_val;
         XTmrCtr_SetResetValue(&TimerInstancePtr2,
@@ -4436,8 +4516,8 @@ else if (e_steps > 0) {
     else
     {
       //      WRITE(HEATER_0_PIN,LOW);
-      _CLR(shields_data , HEATER_PIN);
-      XGpio_DiscreteWrite(&ShieldInst, 1, shields_data);
+      _CLR(ck_shields_data , HTR0_PIN);
+      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
       //XGpio_DiscreteWrite(&HeaterInst, 1, 0x00);
       //      OCR2A = 192;
       XTmrCtr_SetResetValue(&TimerInstancePtr2,
@@ -4451,14 +4531,14 @@ else if (e_steps > 0) {
     if(g_heater_pwm_val > 253)
        {
     //     WRITE(HEATER_0_PIN,HIGH);
-      _SET(shields_data , HEATER_PIN);
-      XGpio_DiscreteWrite(&ShieldInst, 1, shields_data);
+      _SET(ck_shields_data , HTR0_PIN);
+      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
       //  XGpio_DiscreteWrite(&HeaterInst, 1, 0x01);
        }
        else
        {
     //     WRITE(HEATER_0_PIN,LOW);
-        _CLR(shields_data , HEATER_PIN);
+        _CLR(ck_shields_data , HTR0_PIN);
         XGpio_DiscreteWrite(&ShieldInst, 1, shields_data);
         //XGpio_DiscreteWrite(&HeaterInst, 1, 0x00);
        }
@@ -5254,9 +5334,15 @@ else if (e_steps > 0) {
 //    XGpio_SetDataDirection(&HeaterInst, 1, 0x00);
 
     u32 shield_dir = 0x00;
-    _SET(shield_dir, X_MAX_PIN);
-    _SET(shield_dir, Y_MAX_PIN);
-    _SET(shield_dir, Z_MAX_PIN);
+    #ifdef DELTA
+      _SET(shield_dir, X_MAX_PIN);
+      _SET(shield_dir, Y_MAX_PIN);
+      _SET(shield_dir, Z_MAX_PIN);
+    #else
+      _SET(shield_dir, X_MIN_PIN);
+      _SET(shield_dir, Y_MIN_PIN);
+      _SET(shield_dir, Z_MIN_PIN);
+    #endif
     _SET(shield_dir, THERMISTOR_PIN);
     // printf("shield_dir: %d\r\n",shield_dir);
     XGpio_SetDataDirection(&ShieldInst, 1, shield_dir);

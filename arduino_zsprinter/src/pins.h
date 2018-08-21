@@ -549,7 +549,7 @@
 #endif
 /****************************************************************************************
 * Duemilanove w/ ATMega328P pin assignment
-*
+* Pynquino 
 ****************************************************************************************/
 #if MOTHERBOARD == 4
 #define KNOWN_BOARD 1
@@ -558,41 +558,84 @@
 #error Oops!  Make sure you have 'Arduino Duemilanove w/ ATMega328' selected from the 'Tools -> Boards' menu.
 #endif
 
-#define X_STEP_PIN         2 
-#define X_DIR_PIN          5 
-#define X_ENABLE_PIN       8 
-#define X_MIN_PIN          -1 
-#define X_MAX_PIN          9 
+#ifdef DELTA
+  #define X_STEP_PIN         2 
+  #define X_DIR_PIN          5 
+  #define X_ENABLE_PIN       8 
+  #define X_MIN_PIN          -1 
+  #define X_MAX_PIN          9 
+  
+  #define Y_STEP_PIN         3 
+  #define Y_DIR_PIN          6 
+  #define Y_ENABLE_PIN       8 
+  #define Y_MIN_PIN          -1 
+  #define Y_MAX_PIN          10 
+  
+  #define Z_STEP_PIN         4 
+  #define Z_DIR_PIN          7 
+  #define Z_ENABLE_PIN       8 
+  #define Z_MIN_PIN          -1 
+  #define Z_MAX_PIN          10 
+  
+  #define E_STEP_PIN         12
+  #define E_DIR_PIN          13
+  #define E_ENABLE_PIN       8 
+  
+  #define SDPOWER          -1
+  #define SDSS          -1
+  #define LED_PIN            -1
+  #define FAN_PIN            -1 
+  #define PS_ON_PIN          -1
+  #define KILL_PIN           -1
+  #define ALARM_PIN          -1
+  
+  #define HEATER_0_PIN        -1 
+  #define TEMP_0_PIN          99    // MUST USE ANALOG INPUT NUMBERING NOT DIGITAL OUTPUT NUMBERING!!!!!!!!!
 
-#define Y_STEP_PIN         3 
-#define Y_DIR_PIN          6 
-#define Y_ENABLE_PIN       8 
-#define Y_MIN_PIN          -1 
-#define Y_MAX_PIN          10 
-
-#define Z_STEP_PIN         4 
-#define Z_DIR_PIN          7 
-#define Z_ENABLE_PIN       8 
-#define Z_MIN_PIN          -1 
-#define Z_MAX_PIN          10 
-
-#define E_STEP_PIN         12
-#define E_DIR_PIN          13
-#define E_ENABLE_PIN       8 
-
-#define SDPOWER          -1
-#define SDSS          -1
-#define LED_PIN            -1
-#define FAN_PIN            -1 
-#define PS_ON_PIN          -1
-#define KILL_PIN           -1
-#define ALARM_PIN          -1
-
-#define HEATER_0_PIN        -1 
-#define TEMP_0_PIN          99    // MUST USE ANALOG INPUT NUMBERING NOT DIGITAL OUTPUT NUMBERING!!!!!!!!!
-
+#else // gantry
+  #define X_STEP_PIN         2 
+  #define X_DIR_PIN          6
+  #define X_ENABLE_PIN       0 
+  #define X_MIN_PIN          10 
+  #define X_MAX_PIN          -1
+  
+  #define Y_STEP_PIN         3 
+  #define Y_DIR_PIN          7 
+  #define Y_ENABLE_PIN       1 
+  #define Y_MIN_PIN          11 
+  #define Y_MAX_PIN          -1 
+  
+  #define Z_STEP_PIN         4 
+  #define Z_DIR_PIN          8 
+  #define Z_ENABLE_PIN       2 
+  #define Z_MIN_PIN          11 
+  #define Z_MAX_PIN          -1 
+  
+  #define E_STEP_PIN         5 
+  #define E_DIR_PIN          12 
+  #define E_ENABLE_PIN       3 
+  
+  #define SDPOWER          -1
+  #define SDSS          -1
+  #define LED_PIN            -1
+  #define FAN_PIN            -1 
+  #define PS_ON_PIN          -1
+  #define KILL_PIN           -1
+  #define ALARM_PIN          -1
+  
+  #define HEATER_0_PIN        -1 
+  #define TEMP_0_PIN          99    // MUST USE ANALOG INPUT NUMBERING NOT DIGITAL OUTPUT NUMBERING!!!!!!!!!
 
 #endif
+
+#endif
+
+/****************************************************************************************
+* Duemilanove w/ ATMega328P pin assignment
+* Pynquino Gantry 
+****************************************************************************************/
+
+
 
 /****************************************************************************************
 * Gen6 pin assignment
