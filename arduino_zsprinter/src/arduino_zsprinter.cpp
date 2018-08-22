@@ -294,6 +294,8 @@ void __cxa_pure_virtual() {
 ;
 
 bool all_axis;
+uint8_t current_tool_number = 0;
+bool is_curing = false;
 
 // look here for descriptions of gcodes: http://linuxcnc.org/handbook/gcode/g-code.html
 // http://objects.reprap.org/wiki/Mendel_User_Manual:_RepRapGCodes
@@ -579,9 +581,6 @@ static bool retract_feedrate_aktiv = false;
   static bool old_y_max_endstop = false;
   static bool old_z_min_endstop = false;
   static bool old_z_max_endstop = false;
-
-  int mycounter = 0;
-  int mycounter2 = 0;
 
   unsigned long codenum_heater; 
   bool waiting_until_setpoint = false;
@@ -1808,7 +1807,9 @@ void dumpAllPins(){
  *   S1           Don't move the tool in XY after change
  */
 inline void gcode_T(uint8_t tmp_extruder) {
-  //tool_change(tmp_extruder);
+  current_tool_number = tmp_extruder;
+  sprintf(temp_msg, "current tool:%d\r\n",current_tool_number);
+  uart_print(uart_dev0, temp_msg, strlen(temp_msg)); 
 }
 
 
@@ -2733,27 +2734,19 @@ void process_commands() {
       break;
 
     case 700: //UV LED ON
-      uart_print(uart_dev0, "UV LED ON\r\n", strlen("UV LED ON\r\n")); 
-      _SET(ck_shields_data, UV_PIN);
-      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+      uv_led_on();   
       break;
 
     case 701: //UV LED OFF
-      uart_print(uart_dev0, "UV LED OFF\r\n", strlen("UV LED OFF\r\n")); 
-      _CLR(ck_shields_data, UV_PIN);
-      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+      uv_led_off();   
       break;
 
     case 702: // dispenser on
-      uart_print(uart_dev0, "Dispenser ON\r\n", strlen("Dispenser ON\r\n")); 
-      _SET(ck_shields_data, DISP_PIN);
-      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+      dispenser_on();
       break;
 
     case 703: // dispenser off
-      uart_print(uart_dev0, "Dispenser OFF\r\n", strlen("Dispenser OFF\r\n")); 
-      _CLR(ck_shields_data , DISP_PIN);
-      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+      dispenser_off();
       break;
 
     case 704: // Change dispenser discharge pressure
@@ -2784,7 +2777,9 @@ void process_commands() {
       break;
 
     }
-
+   }
+    else if (code_seen('T')) {
+      gcode_T(code_value());
     } else {
       // printf("Unknown command:%s\r\n",cmdbuffer[bufindr]);
       //showString(PSTR("Unknown command:\r\n"));
@@ -2795,6 +2790,30 @@ void process_commands() {
 
   }
 
+
+  void uv_led_on(){
+      uart_print(uart_dev0, "UV LED ON\r\n", strlen("UV LED ON\r\n")); 
+      _SET(ck_shields_data, UV_PIN);
+      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+  }
+
+  void uv_led_off(){
+      uart_print(uart_dev0, "UV LED OFF\r\n", strlen("UV LED OFF\r\n")); 
+      _CLR(ck_shields_data, UV_PIN);
+      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+  }
+
+  void dispenser_on(){
+      uart_print(uart_dev0, "Dispenser ON\r\n", strlen("Dispenser ON\r\n")); 
+      _SET(ck_shields_data, DISP_PIN);
+      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+  }
+
+  void dispenser_off(){
+      uart_print(uart_dev0, "Dispenser OFF\r\n", strlen("Dispenser OFF\r\n")); 
+      _CLR(ck_shields_data , DISP_PIN);
+      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+  }
 
   void update_dispenser_pressure(int channel, int target_pressure){
      //String base_command = "0EPH  CH001P";
@@ -4508,10 +4527,6 @@ else if (e_steps > 0) {
    */
 #endif // ADVANCE
 
-  void step(){
-    _TGL(shields_data , STEP_X_PIN);
-    XGpio_DiscreteWrite(&ShieldInst, 1, shields_data);
-  }
 
   void Timer_OVF_vect(){
   #ifdef PID_SOFT_PWM
@@ -4574,7 +4589,6 @@ else if (e_steps > 0) {
     if (current_block == NULL) {
       // Anything in the buffer?
       current_block = plan_get_current_block();
-      mycounter2++;
       if (current_block != NULL) {
         trapezoid_generator_reset();
         counter_x = -(current_block->step_event_count >> 1);
@@ -4890,6 +4904,11 @@ else if (e_steps > 0) {
 #ifndef ADVANCE
         counter_e += current_block->steps_e;
         if (counter_e > 0) {
+          if(is_curing==false && current_tool_number==1){
+            is_curing = true;
+            uv_led_on();
+            dispenser_on();
+          }
           // WRITE(E_STEP_PIN, HIGH);
           _SET(shields_data , STEP_E_PIN);
           XGpio_DiscreteWrite(&ShieldInst, 1, shields_data);
@@ -4991,6 +5010,12 @@ else if (e_steps > 0) {
       if (step_events_completed >= current_block->step_event_count) {
         current_block = NULL;
         plan_discard_current_block();
+        
+        if(is_curing){
+          uv_led_off();
+          dispenser_off();
+          is_curing = false;
+        }
 
         //free buffer
         int buflen_accum_finished = MAILBOX_DATA(BUFLEN_ACCUM_FINISHED_DATA_ADDR); 
@@ -5027,11 +5052,6 @@ else if (e_steps > 0) {
 
   	// SeeedOled.setTextXY(6,0);
   	// SeeedOled.putNumber(homing_status);
-  	// SeeedOled.setTextXY(6,1);
-  	// SeeedOled.putNumber(mycounter);
-  	// mycounter++;
-  	// SeeedOled.setTextXY(6,6);
-  	// SeeedOled.putNumber(mycounter2);
   }
 
   void Timer_InterruptHandler3(void *data, u8 TmrCtrNumber)

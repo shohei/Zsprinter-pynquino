@@ -192,3 +192,11 @@ void initializeUART0();
 void initializeUART1();
 
 void uart_print(uart dev, char *msg, unsigned int length);
+
+void uv_led_on();
+void uv_led_off();
+void dispenser_on();
+void dispenser_off();
+
+inline void gcode_T(uint8_t tmp_extruder);
+
