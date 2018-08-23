@@ -191,7 +191,7 @@ void update_dispenser_pressure(int channel, int target_pressure);
 void initializeUART0();
 void initializeUART1();
 
-void uart_print(uart dev, char *msg, unsigned int length);
+void uart_print(char *msg);
 
 void uv_led_on();
 void uv_led_off();

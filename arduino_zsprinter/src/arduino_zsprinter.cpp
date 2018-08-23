@@ -318,6 +318,7 @@ bool is_curing = false;
 // M106 - Fan on
 // M107 - Fan off
 // M109 - Wait for extruder current temp to reach target temp.
+// M112 - Emergency stop
 // M114 - Display current position
 
 //Custom M Codes
@@ -976,14 +977,15 @@ void disable_e(){
   #endif
 }
 
-void uart_print(uart dev, char * msg, unsigned int length){
+void uart_print(char * msg){
+  unsigned int length = strlen(msg);
    if(length<16){
-    uart_write(dev,msg,length);
+    uart_write(uart_dev0,msg,length);
     usleep(1000);
    }  else if(length<32){
-    uart_write(dev,msg,16);
+    uart_write(uart_dev0,msg,16);
     usleep(1000);
-    uart_write(dev,msg+16,length-16);
+    uart_write(uart_dev0,msg+16,length-16);
     usleep(1000);
    } 
 }
@@ -1245,9 +1247,9 @@ void setup() {
 void initializeUART0(){
   uart_dev0 = uart_open(1,0);
   char dummy_msg[] = "*";
-  uart_print(uart_dev0, dummy_msg, 1);
+  uart_print(dummy_msg);
   char msg[] = "Zsprinter started !!!\r\n";
-  uart_print(uart_dev0, msg, strlen(msg));
+  uart_print(msg);
 }
 
 //Additional UART Lite, 38400 bps
@@ -1257,7 +1259,7 @@ void initializeUART1(){
    if (Status != XST_SUCCESS) {
       //return XST_FAILURE;
       char msg[] = "UART1 error\r\n";
-      uart_print(uart_dev0, msg, strlen(msg));
+      uart_print(msg);
    }
 }
 
@@ -1297,14 +1299,15 @@ char recv_buffer[64];
 
 void loop() {
   //uart_readline(uart_dev0, recv_buffer);
+  memset( current_command, '\0' , strlen(current_command));
   uart_readline(uart_dev0, current_command);
   current_command_length = strlen(current_command);
   for(int i=0;i<current_command_length;i++){
      parse_command(current_command[i],i);
   }
   //char msg[] = "\r\nYou received: ";
-  //uart_print(uart_dev0, msg, strlen(msg));
-  //uart_print(uart_dev0, recv_buffer, strlen(recv_buffer));
+  //uart_print(msg);
+  //uart_print(recv_buffer);
 
 /*
   while( MAILBOX_CMD_ADDR==0 || clear_to_send==false); // Wait until any of the conditions satisfied
@@ -1808,8 +1811,8 @@ void dumpAllPins(){
  */
 inline void gcode_T(uint8_t tmp_extruder) {
   current_tool_number = tmp_extruder;
-  sprintf(temp_msg, "current tool:%d\r\n",current_tool_number);
-  uart_print(uart_dev0, temp_msg, strlen(temp_msg)); 
+  //sprintf(temp_msg, "current tool:%d\r\n",current_tool_number);
+  //uart_print(temp_msg); 
 }
 
 
@@ -1863,7 +1866,7 @@ void process_commands() {
       while (millis() < codenum) {
         //manage_heater();
         manage_heater(SysMonInstPtr);
-      }
+      } 
       break;
     case 28: //G28 Home all Axis one at a time
       saved_feedrate = feedrate;
@@ -1879,7 +1882,6 @@ void process_commands() {
       }
       feedrate = 0;
       is_homing = true;
-
 
       #ifdef DELTA
         /**
@@ -1965,18 +1967,21 @@ void process_commands() {
 //        st_synchronize();
 //      }
     
+      //temporary hack for delta
+      #ifdef DELTA
         //G92 E0
         codenum = code_value();
         current_position[E_AXIS] = codenum;
         position[E_AXIS] = -1*last_e_steps;
+      #endif
 
-      // for (int i = 0; i < NUM_AXIS; i++) {
-      //   if (code_seen(axis_codes[i]))
-      //     current_position[i] = code_value();
-      // }
-//      plan_set_position(current_position[X_AXIS],
-//          current_position[Y_AXIS], current_position[Z_AXIS],
-//          current_position[E_AXIS]);
+       for (int i = 0; i < NUM_AXIS; i++) {
+         if (code_seen(axis_codes[i]))
+           current_position[i] = code_value();
+       }
+      plan_set_position(current_position[X_AXIS],
+          current_position[Y_AXIS], current_position[Z_AXIS],
+          current_position[E_AXIS]);
       break;
     default:
 #ifdef SEND_WRONG_CMD_INFO
@@ -2223,6 +2228,14 @@ void process_commands() {
 #endif
       break;
     case 105: // M105
+      //sprintf(temp_msg, "h:%d t:%d\r\n",block_buffer_head,block_buffer_tail);
+      //uart_print(temp_msg);
+      if(is_homing) return;
+      //if(block_buffer_tail!=block_buffer_head) {
+      // uart_print("busy\r\n");
+      // return;
+      //} 
+      // return if state is busy 
 #if (TEMP_0_PIN > -1) || defined (HEATER_USES_MAX6675)|| defined HEATER_USES_AD595
       hotendtC = analog2temp(current_raw);
 #endif
@@ -2236,11 +2249,12 @@ void process_commands() {
       // printf("ok T:%d",hotendtC);
 
       sprintf(temp_msg, "ok T:%d\r\n",hotendtC);
-      uart_write(uart_dev0,temp_msg,strlen(temp_msg));
+      uart_print(temp_msg);
       
       MAILBOX_DATA_FLOAT(HOTEND_TEMP_ADDR) = hotendtC;
       clear_to_send = true;
       MAILBOX_CMD_ADDR = 0x0;
+      return;
 #ifdef PIDTEMP
       //showString(PSTR(" @:"));
       //Serial.print(heater_duty);
@@ -2473,7 +2487,7 @@ void process_commands() {
     case 93: // M93 show current axis steps.
     clear_to_send = true;
     MAILBOX_CMD_ADDR = 0x0;
-      uart_write(uart_dev0,ok_msg,strlen(ok_msg));
+      uart_print(ok_msg);
       // printf("ok \r\n");
       // printf("X:%dY:%dZ:%dE:%d\r\n",axis_steps_per_unit[0],axis_steps_per_unit[1],axis_steps_per_unit[2],axis_steps_per_unit[3]);
       //showString(PSTR("ok "));
@@ -2486,6 +2500,12 @@ void process_commands() {
       //showString(PSTR("E:"));
       //Serial.println(axis_steps_per_unit[3]);
       break;
+
+    case 112: //emergency stop
+      uart_print("mb reset\r\n");
+      microblaze_disable_interrupts();
+      (*((void (*)())(0x00)))(); // restart
+
     case 115: // M115
       //showString(PSTR("FIRMWARE_NAME: Sprinter Experimental PROTOCOL_VERSION:1.0 MACHINE_TYPE:Mendel EXTRUDER_COUNT:1\r\n"));
       // printf("FIRMWARE_NAME: Sprinter Experimental PROTOCOL_VERSION:1.0 MACHINE_TYPE:Mendel EXTRUDER_COUNT:1\r\n");
@@ -2505,18 +2525,18 @@ void process_commands() {
       //Serial.print(current_position[2]);
       //showString(PSTR("E:"));
       //Serial.println(current_position[3]);
-      uart_print(uart_dev0,"X:",strlen(("X:")));
-      sprintf(temp_msg, "%.2f ",strlen(temp_msg));
-      uart_print(uart_dev0,temp_msg,strlen(temp_msg));
-      uart_print(uart_dev0,"Y:",strlen(("Y:")));
+      uart_print("X:");
+      sprintf(temp_msg, "%.2f ",current_position[0]);
+      uart_print(temp_msg);
+      uart_print("Y:");
       sprintf(temp_msg,"%.2f ",current_position[1]);
-      uart_print(uart_dev0,temp_msg,strlen(temp_msg));
-      uart_print(uart_dev0,"Z:",strlen(("Z:")));
+      uart_print(temp_msg);
+      uart_print("Z:");
       sprintf(temp_msg,"%.2f ",current_position[2]);
-      uart_print(uart_dev0,temp_msg,strlen(temp_msg));
-      uart_print(uart_dev0,"E:",strlen(("E:")));
+      uart_print(temp_msg);
+      uart_print("E:");
       sprintf(temp_msg,"%.2f",current_position[3]);
-      uart_print(uart_dev0,temp_msg,strlen(temp_msg));
+      uart_print(temp_msg);
 
       MAILBOX_DATA_FLOAT(X_DATA_ADDR) = current_position[0];
       MAILBOX_DATA_FLOAT(Y_DATA_ADDR) = current_position[1];
@@ -2530,37 +2550,37 @@ void process_commands() {
       //showString(PSTR("x_min:"));
       //Serial.print((READ(X_MIN_PIN) ^ X_ENDSTOP_INVERT) ? "H " : "L ");
       sprintf(temp_msg, "x_min: %s ", _CHK(XGpio_DiscreteRead(&ShieldInst, 1), X_MIN_PIN) != X_ENDSTOP_INVERT ? "H " : "L ");
-      uart_print(uart_dev0, temp_msg, strlen(temp_msg));
+      uart_print(temp_msg);
 #endif
 #if (X_MAX_PIN > -1)
       //showString(PSTR("x_max:"));
       //Serial.print((READ(X_MAX_PIN)^X_ENDSTOP_INVERT)?"H ":"L ");
       sprintf(temp_msg, "x_max: %s ", _CHK(XGpio_DiscreteRead(&ShieldInst, 1), X_MAX_PIN) != X_ENDSTOP_INVERT ? "H " : "L ");
-      uart_print(uart_dev0, temp_msg, strlen(temp_msg));
+      uart_print(temp_msg);
       #endif
 #if (Y_MIN_PIN > -1)
       //showString(PSTR("y_min:"));
       //Serial.print((READ(Y_MIN_PIN) ^ Y_ENDSTOP_INVERT) ? "H " : "L ");
       sprintf(temp_msg, "y_min: %s ", _CHK(XGpio_DiscreteRead(&ShieldInst, 1), Y_MIN_PIN) != Y_ENDSTOP_INVERT ? "H " : "L ");
-      uart_print(uart_dev0, temp_msg, strlen(temp_msg));
+      uart_print(temp_msg);
 #endif
 #if (Y_MAX_PIN > -1)
       //showString(PSTR("y_max:"));
       //Serial.print((READ(Y_MAX_PIN)^Y_ENDSTOP_INVERT)?"H ":"L ");
       sprintf(temp_msg, "y_max: %s ", _CHK(XGpio_DiscreteRead(&ShieldInst, 1), Y_MAX_PIN) != Y_ENDSTOP_INVERT ? "H " : "L ");
-      uart_print(uart_dev0, temp_msg, strlen(temp_msg));
+      uart_print(temp_msg));
 #endif
 #if (Z_MIN_PIN > -1)
       //showString(PSTR("z_min:"));
       //Serial.print((READ(Z_MIN_PIN) ^ Z_ENDSTOP_INVERT) ? "H " : "L ");
       sprintf(temp_msg, "z_min: %s ", _CHK(XGpio_DiscreteRead(&ShieldInst, 1), Z_MIN_PIN) != Z_ENDSTOP_INVERT ? "H " : "L ");
-      uart_print(uart_dev0, temp_msg, strlen(temp_msg));
+      uart_print(temp_msg);
 #endif
 #if (Z_MAX_PIN > -1)
       //showString(PSTR("z_max:"));
       //Serial.print((READ(Z_MAX_PIN)^Z_ENDSTOP_INVERT)?"H ":"L ");
       sprintf(temp_msg, "z_max: %s ", _CHK(XGpio_DiscreteRead(&ShieldInst, 1), Z_MAX_PIN) != Z_ENDSTOP_INVERT ? "H " : "L ");
-      uart_print(uart_dev0, temp_msg, strlen(temp_msg));
+      uart_print(temp_msg);
 #endif
 
       //showString(PSTR("\r\n"));
@@ -2792,25 +2812,25 @@ void process_commands() {
 
 
   void uv_led_on(){
-      uart_print(uart_dev0, "UV LED ON\r\n", strlen("UV LED ON\r\n")); 
+      //uart_print("UV LED ON\r\n"); 
       _SET(ck_shields_data, UV_PIN);
       XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
   }
 
   void uv_led_off(){
-      uart_print(uart_dev0, "UV LED OFF\r\n", strlen("UV LED OFF\r\n")); 
+      //uart_print("UV LED OFF\r\n"); 
       _CLR(ck_shields_data, UV_PIN);
       XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
   }
 
   void dispenser_on(){
-      uart_print(uart_dev0, "Dispenser ON\r\n", strlen("Dispenser ON\r\n")); 
+      //uart_print("Dispenser ON\r\n"); 
       _SET(ck_shields_data, DISP_PIN);
       XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
   }
 
   void dispenser_off(){
-      uart_print(uart_dev0, "Dispenser OFF\r\n", strlen("Dispenser OFF\r\n")); 
+      //uart_print("Dispenser OFF\r\n"); 
       _CLR(ck_shields_data , DISP_PIN);
       XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
   }
@@ -2862,7 +2882,8 @@ void process_commands() {
 #endif
   clear_to_send = true;
   MAILBOX_CMD_ADDR = 0x0;
-  uart_write(uart_dev0,ok_msg,strlen(ok_msg));
+  uart_print(ok_msg);
+  //uart_write(uart_dev0,ok_msg,strlen(ok_msg));
     // printf("ok\r\n");
     //  //showString(PSTR("ok\r\n"));
     ////Serial.println("ok");
@@ -4909,16 +4930,21 @@ else if (e_steps > 0) {
             uv_led_on();
             dispenser_on();
           }
-          // WRITE(E_STEP_PIN, HIGH);
-          _SET(shields_data , STEP_E_PIN);
-          XGpio_DiscreteWrite(&ShieldInst, 1, shields_data);
 
-          wait_for_1_8us();
+          if(current_tool_number==0){
+            // WRITE(E_STEP_PIN, HIGH);
+            _SET(shields_data , STEP_E_PIN);
+            XGpio_DiscreteWrite(&ShieldInst, 1, shields_data);
+
+            wait_for_1_8us();
+          }
 
           counter_e -= current_block->step_event_count;
-          // WRITE(E_STEP_PIN, LOW);
-          _CLR(shields_data , STEP_E_PIN);
-          XGpio_DiscreteWrite(&ShieldInst, 1, shields_data);
+          if(current_tool_number==0){
+            // WRITE(E_STEP_PIN, LOW);
+            _CLR(shields_data , STEP_E_PIN);
+            XGpio_DiscreteWrite(&ShieldInst, 1, shields_data);
+          }
         }
 #endif //!ADVANCE
 
@@ -5260,7 +5286,7 @@ else if (e_steps > 0) {
             	homing_status = 0;
             	clear_to_send = true;
             	MAILBOX_CMD_ADDR = 0x0;
-                uart_write(uart_dev0, ok_msg, strlen(ok_msg));  
+                uart_print(ok_msg);  
             }
           }
         // Gantry type
@@ -5279,7 +5305,6 @@ else if (e_steps > 0) {
               axis_homing_feedrate_mm_m = homing_feedrate_mm_m[X_AXIS];
 
               if(homing_status==0){
-                uart_print(uart_dev0,"x1\r\n",strlen("x1\r\n"));
          	endstop_x_hit = false;
                 current_position[X_AXIS] = current_position[Y_AXIS] = current_position[Z_AXIS] = 0.0;
 
@@ -5290,14 +5315,12 @@ else if (e_steps > 0) {
                 line_to_axis_pos(X_AXIS, 1.5 * max_length * home_dir);
                 homing_status++;
               } else if(homing_status==1) {  //X_AXIS 2nd
-                uart_print(uart_dev0,"x2\r\n",strlen("x2\r\n"));
               	current_position[X_AXIS] = 0;
 	          sync_plan_position();
   	          // Move away from the endstop by the axis HOME_BUMP_MM
   	          line_to_axis_pos(X_AXIS, -home_bump_mm * home_dir);
                   homing_status++;
               } else if(homing_status==2) { //X_AXIS 3rd
-                uart_print(uart_dev0,"x3\r\n",strlen("x3\r\n"));
               	// Move slowly towards the endstop until triggered
   	          line_to_axis_pos(X_AXIS, 2 * home_bump_mm * home_dir, axis_homing_feedrate_mm_m / 10);
   	          // reset current_position to 0 to reflect hitting endpoint
@@ -5306,10 +5329,10 @@ else if (e_steps > 0) {
   	          // not necessary
   	          //set_axis_is_at_home(axis);
   	          //sync_plan_position_delta();
-  	          sync_plan_position();
+  	          //sync_plan_position();
   	          destination[X_AXIS] = current_position[X_AXIS];
     	          endstop_x_hit = false; // clear endstop hit flags
-                  homing_status=0;
+                  homing_status = 0;
                   home_x_axis = false;
               } 
            } else if (home_y_axis) { // Y_AXIS 1st
@@ -5320,8 +5343,8 @@ else if (e_steps > 0) {
     	      max_length = Y_MAX_LENGTH;
     	      home_bump_mm = Y_HOME_BUMP_MM;
     	      axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Y_AXIS];
+
               if(homing_status==0){
-              uart_print(uart_dev0,"y1\r\n",strlen("y1\r\n"));
                 endstop_y_hit = false;
     		// Set the axis position as setup for the move
                 current_position[Y_AXIS] = 0;
@@ -5330,14 +5353,12 @@ else if (e_steps > 0) {
                 line_to_axis_pos(Y_AXIS, 1.5 * max_length * home_dir);
                 homing_status++;
             } else if(homing_status==1) { // Y_AXIS 2nd
-              uart_print(uart_dev0,"y2\r\n",strlen("y2\r\n"));
             	current_position[Y_AXIS] = 0;
 		sync_plan_position();
   		// Move away from the endstop by the axis HOME_BUMP_MM
   		line_to_axis_pos(Y_AXIS, -home_bump_mm * home_dir);
                 homing_status++;
             } else if(homing_status==2) { // Y_AXIS 3rd
-              uart_print(uart_dev0,"y3\r\n",strlen("y3\r\n"));
     		// Move slowly towards the endstop until triggered
   		line_to_axis_pos(Y_AXIS, 2 * home_bump_mm * home_dir, axis_homing_feedrate_mm_m / 10);
   		// reset current_position to 0 to reflect hitting endpoint
@@ -5346,10 +5367,10 @@ else if (e_steps > 0) {
   		// not necessary
   		//set_axis_is_at_home(axis);
   		//sync_plan_position_delta();
-  		sync_plan_position();
+  		//sync_plan_position();
   		destination[Y_AXIS] = current_position[Y_AXIS];
     		endstop_y_hit = false; // clear endstop hit flags
-                homing_status=0;
+                homing_status = 0;
                 home_y_axis = false;
               }
             } else if (home_z_axis) {
@@ -5362,7 +5383,6 @@ else if (e_steps > 0) {
                axis_homing_feedrate_mm_m = homing_feedrate_mm_m[Z_AXIS];
 
               if(homing_status==0) { // Z_AXIS 1st
-              uart_print(uart_dev0,"z1\r\n",strlen("z1\r\n"));
     		// Set the axis position as setup for the move
                 current_position[Z_AXIS] = 0;
                 sync_plan_position();
@@ -5370,7 +5390,6 @@ else if (e_steps > 0) {
                 line_to_axis_pos(Z_AXIS, 1.5 * max_length * home_dir);
                 homing_status++;
               } else if(homing_status==1){ // Z_AXIS 2nd 
-              uart_print(uart_dev0,"z2\r\n",strlen("z2\r\n"));
     	        current_position[Z_AXIS] = 0;
 	        sync_plan_position();
   	        // Move away from the endstop by the axis HOME_BUMP_MM
@@ -5378,7 +5397,6 @@ else if (e_steps > 0) {
 
                 homing_status++;
               } else if(homing_status==2) { // Z_AXIS 3rd
-              uart_print(uart_dev0,"z3\r\n",strlen("z3\r\n"));
     	        // Move slowly towards the endstop until triggered
   	        line_to_axis_pos(Z_AXIS, 2 * home_bump_mm * home_dir, axis_homing_feedrate_mm_m / 10);
   	        // reset current_position to 0 to reflect hitting endpoint
@@ -5387,17 +5405,16 @@ else if (e_steps > 0) {
   	        // not necessary
   	        //set_axis_is_at_home(axis);
   	        //sync_plan_position_delta();
-  	        sync_plan_position();
+  	        //sync_plan_position();
   	        destination[Z_AXIS] = current_position[Z_AXIS];
     	        endstop_z_hit = false; // clear endstop hit flags
 
-                homing_status==0;
+                homing_status = 0;
                 home_z_axis = false;
               }
             } else  { //all axis homed
-              uart_print(uart_dev0,"done\r\n",strlen("done\r\n"));
                 // sync_plan_position_delta();
-                sync_plan_position();
+                //sync_plan_position();
                 // set the current position as top
                 // trigger sync_plan_position_delta() to exclude orthogonal coordinates
                 current_position[X_AXIS] = current_position[Y_AXIS] = current_position[Z_AXIS] = 0.0;
@@ -5420,34 +5437,35 @@ else if (e_steps > 0) {
             	homing_status = 0;
             	clear_to_send = true;
             	MAILBOX_CMD_ADDR = 0x0;
-                uart_write(uart_dev0, ok_msg, strlen(ok_msg));  
+                uart_print(ok_msg);  
             }
           }
         #endif
   	} else if(waiting_until_setpoint) {
-        if ((millis() - codenum_heater) > 1000) { //Print Temp Reading every 1 second while heating up/cooling down
-           bool still_waiting = target_direction_heating ? (current_raw < target_raw) : (current_raw > target_raw);
-           if(still_waiting) {
-             //showString(PSTR("T:"));
-             //Serial.println( analog2temp(current_raw) );
-             // printf("T:%d\r\n",analog2temp(current_raw));
-              codenum_heater = millis();
-           } else {
-           	 waiting_until_setpoint = false;
-           	 clear_to_send = true;
-                 MAILBOX_CMD_ADDR = 0x0;	
-                 uart_write(uart_dev0, ok_msg, strlen(ok_msg));  
-           }
-        }
-    }
+          if ((millis() - codenum_heater) > 1000) { //Print Temp Reading every 1 second while heating up/cooling down
+             bool still_waiting = target_direction_heating ? (current_raw < target_raw) : (current_raw > target_raw);
+             if(still_waiting) {
+               //showString(PSTR("T:"));
+               //Serial.println( analog2temp(current_raw) );
+               // printf("T:%d\r\n",analog2temp(current_raw));
+                codenum_heater = millis();
+             } else {
+             	 waiting_until_setpoint = false;
+             	 clear_to_send = true;
+                   MAILBOX_CMD_ADDR = 0x0;	
+                   uart_print(ok_msg);  
+             }
+          }
+       }
 
-  	int next_buffer_head_temp = block_buffer_head + 1;
+    int next_buffer_head_temp = block_buffer_head + 1;
     if (next_buffer_head_temp == BLOCK_BUFFER_SIZE) {
       next_buffer_head_temp = 0;
     }
     MAILBOX_DATA(NEXT_BUFFER_HEAD_ADDR) = next_buffer_head_temp;
 
-    if (block_buffer_tail != next_buffer_head_temp) {
+  if(!is_homing){
+    if (block_buffer_tail != next_buffer_head_temp)  {
        if(buflen) {
      // #ifdef SDSUPPORT
      //     if(savetosd)
@@ -5482,7 +5500,7 @@ else if (e_steps > 0) {
            bufindr = 0;
        }
     }
-
+  }
   // heater is not checked, so comment it out
   
       //check heater every n milliseconds
@@ -5561,7 +5579,7 @@ else if (e_steps > 0) {
     xStatus = XGpio_Initialize(&CK_ShieldInst, CK_SHIELDS_DEVICE_ID);
     if (xStatus != XST_SUCCESS){
       //do nothing
-      uart_print(uart_dev0, "UART1 error", strlen("UART1 error"));
+      uart_print("UART1 error\r\n"); 
     }
     u32 shield_dir = 0x00; // all pins are output
     XGpio_SetDataDirection(&CK_ShieldInst, 1, shield_dir); 
@@ -5667,25 +5685,26 @@ else if (e_steps > 0) {
     // Timer4 (debug)
     //**************************************************************************//
 
-    // xStatus = XTmrCtr_Initialize(&TimerInstancePtr4,XPAR_TMRCTR_3_DEVICE_ID);
-    // if(XST_SUCCESS != xStatus){
-      // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr4 ng");
-      // print("TIMER3 INIT FAILED \n\r");
-    // }
+     //xStatus = XTmrCtr_Initialize(&TimerInstancePtr4,XPAR_TMRCTR_3_DEVICE_ID);
+     //if(XST_SUCCESS != xStatus){
+    //// SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr4 ng");
+    //// print("TIMER3 INIT FAILED \n\r");
+     //}
 
-    // XTmrCtr_SetHandler(&TimerInstancePtr4,
-    //     Timer_InterruptHandler_Debug,
-    //     &TimerInstancePtr4);
+     //XTmrCtr_SetHandler(&TimerInstancePtr4,
+     //    Timer_InterruptHandler_Debug,
+     //    &TimerInstancePtr4);
 
-    // XTmrCtr_SetResetValue(&TimerInstancePtr4,
-    //     0, //Channel 0
-    //     // 0x4c4b40); //20Hz 
-    //     // 0x5f5e100); //1Hz -> for debug
-    //     0x1312d00);//5Hz
+     //XTmrCtr_SetResetValue(&TimerInstancePtr4,
+     //    0, //Channel 0
+     //    // 0x1dcd6500); //0.2Hz
+     //    // 0x4c4b40); //20Hz 
+     //    0x5f5e100); //1Hz -> for debug
+     //    // 0x1312d00);//5Hz
 
-    // XTmrCtr_SetOptions(&TimerInstancePtr4,
-    //     0, //Channel 0
-    //     (XTC_INT_MODE_OPTION | XTC_AUTO_RELOAD_OPTION | XTC_DOWN_COUNT_OPTION));//Timer4 is DOWN counter
+     //XTmrCtr_SetOptions(&TimerInstancePtr4,
+     //    0, //Channel 0
+     //    (XTC_INT_MODE_OPTION | XTC_AUTO_RELOAD_OPTION | XTC_DOWN_COUNT_OPTION));//Timer4 is DOWN counter
 
     //**************************************************************************//
     // Connect INTC and Timers 
@@ -5733,7 +5752,7 @@ else if (e_steps > 0) {
     XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_0_VEC_ID);
     XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_1_VEC_ID);
     XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_2_VEC_ID);
-    // XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_3_VEC_ID);
+    //XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_3_VEC_ID);
     microblaze_enable_interrupts();
 
     XTmrCtr_Start(&TimerInstancePtr,0);
@@ -5744,7 +5763,7 @@ else if (e_steps > 0) {
     // print("AXI timer2 - timer1 start \n\r");
     XTmrCtr_Start(&TimerInstancePtr3,0);
     // print("AXI timer3 start \n\r");
-    // XTmrCtr_Start(&TimerInstancePtr4,0);
+    //XTmrCtr_Start(&TimerInstancePtr4,0);
   }
 
   void st_init() {
