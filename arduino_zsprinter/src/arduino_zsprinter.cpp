@@ -295,7 +295,6 @@ void __cxa_pure_virtual() {
 
 bool all_axis;
 uint8_t current_tool_number = 0;
-bool is_curing = false;
 
 // look here for descriptions of gcodes: http://linuxcnc.org/handbook/gcode/g-code.html
 // http://objects.reprap.org/wiki/Mendel_User_Manual:_RepRapGCodes
@@ -603,6 +602,8 @@ static bool retract_feedrate_aktiv = false;
   #define NEXT_BUFFER_HEAD_ADDR 111
   #define HOTEND_TEMP_RAW_ADDR 112
 
+
+  int e_pulse_counter;
 
 //------------------------------------------------
 //Init the SD card 
@@ -4925,13 +4926,11 @@ else if (e_steps > 0) {
 #ifndef ADVANCE
         counter_e += current_block->steps_e;
         if (counter_e > 0) {
-          if(is_curing==false && current_tool_number==1){
-            is_curing = true;
-            uv_led_on();
-            dispenser_on();
-          }
 
-          if(current_tool_number==0){
+         if(current_tool_number==1){
+            e_pulse_counter++; // counter for dispenser and UV LED
+         } 
+         if(current_tool_number==0){
             // WRITE(E_STEP_PIN, HIGH);
             _SET(shields_data , STEP_E_PIN);
             XGpio_DiscreteWrite(&ShieldInst, 1, shields_data);
@@ -5036,12 +5035,6 @@ else if (e_steps > 0) {
       if (step_events_completed >= current_block->step_event_count) {
         current_block = NULL;
         plan_discard_current_block();
-        
-        if(is_curing){
-          uv_led_off();
-          dispenser_off();
-          is_curing = false;
-        }
 
         //free buffer
         int buflen_accum_finished = MAILBOX_DATA(BUFLEN_ACCUM_FINISHED_DATA_ADDR); 
@@ -5065,19 +5058,18 @@ else if (e_steps > 0) {
     }
   }
 
+  // Handler for dispenser and UV LED control
   void Timer_InterruptHandler_Debug(void *data, u8 TmrCtrNumber){
-  	// SeeedOled.setTextXY(5,0);
-  	// SeeedOled.putString("h:");
-  	// SeeedOled.putNumber(block_buffer_head);
-  	// SeeedOled.setTextXY(5,4);
-  	// SeeedOled.putString("t:");
-  	// SeeedOled.putNumber(block_buffer_tail);
-  	// SeeedOled.setTextXY(5,8);
-  	// SeeedOled.putString("c:");
-  	// SeeedOled.putNumber(step_events_completed);
-
-  	// SeeedOled.setTextXY(6,0);
-  	// SeeedOled.putNumber(homing_status);
+        //sprintf(temp_msg, "s:%d\r\n", current_block->nominal_speed);
+        //uart_print(temp_msg);
+        if(e_pulse_counter>0){
+          uv_led_on();
+          dispenser_on();
+        } else {
+          uv_led_off();
+          dispenser_off();
+        }
+        e_pulse_counter = 0;
   }
 
   void Timer_InterruptHandler3(void *data, u8 TmrCtrNumber)
@@ -5685,26 +5677,26 @@ else if (e_steps > 0) {
     // Timer4 (debug)
     //**************************************************************************//
 
-     //xStatus = XTmrCtr_Initialize(&TimerInstancePtr4,XPAR_TMRCTR_3_DEVICE_ID);
-     //if(XST_SUCCESS != xStatus){
-    //// SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr4 ng");
-    //// print("TIMER3 INIT FAILED \n\r");
-     //}
+     xStatus = XTmrCtr_Initialize(&TimerInstancePtr4,XPAR_TMRCTR_3_DEVICE_ID);
+     if(XST_SUCCESS != xStatus){
+    // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr4 ng");
+    // print("TIMER3 INIT FAILED \n\r");
+     }
 
-     //XTmrCtr_SetHandler(&TimerInstancePtr4,
-     //    Timer_InterruptHandler_Debug,
-     //    &TimerInstancePtr4);
+     XTmrCtr_SetHandler(&TimerInstancePtr4,
+         Timer_InterruptHandler_Debug,
+         &TimerInstancePtr4);
 
-     //XTmrCtr_SetResetValue(&TimerInstancePtr4,
-     //    0, //Channel 0
-     //    // 0x1dcd6500); //0.2Hz
-     //    // 0x4c4b40); //20Hz 
-     //    0x5f5e100); //1Hz -> for debug
-     //    // 0x1312d00);//5Hz
+     XTmrCtr_SetResetValue(&TimerInstancePtr4,
+         0, //Channel 0
+         // 0x1dcd6500); //0.2Hz
+         // 0x4c4b40); //20Hz 
+         0x5f5e100); //1Hz -> for debug
+         //  0x1312d00);//5Hz
 
-     //XTmrCtr_SetOptions(&TimerInstancePtr4,
-     //    0, //Channel 0
-     //    (XTC_INT_MODE_OPTION | XTC_AUTO_RELOAD_OPTION | XTC_DOWN_COUNT_OPTION));//Timer4 is DOWN counter
+     XTmrCtr_SetOptions(&TimerInstancePtr4,
+         0, //Channel 0
+         (XTC_INT_MODE_OPTION | XTC_AUTO_RELOAD_OPTION | XTC_DOWN_COUNT_OPTION));//Timer4 is DOWN counter
 
     //**************************************************************************//
     // Connect INTC and Timers 
@@ -5737,13 +5729,13 @@ else if (e_steps > 0) {
       // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr3c");
       // print("connect timer3 error\n\r");
     }
-    // xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_3_VEC_ID,
-    //     (XInterruptHandler)XTmrCtr_InterruptHandler,
-    //     (void*)&TimerInstancePtr4);
-    // if (xStatus != XST_SUCCESS){
-    //   // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr4c");
-    //   // print("connect timer3 error\n\r");
-    // }
+     xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_3_VEC_ID,
+         (XInterruptHandler)XTmrCtr_InterruptHandler,
+         (void*)&TimerInstancePtr4);
+     if (xStatus != XST_SUCCESS){
+       // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr4c");
+       // print("connect timer3 error\n\r");
+     }
     xStatus = XIntc_Start(&IntcInstancePtr, XIN_REAL_MODE);
     if (xStatus != XST_SUCCESS){
       // SeeedOled.setTextXY(0,0);SeeedOled.putString("intc");
@@ -5752,7 +5744,7 @@ else if (e_steps > 0) {
     XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_0_VEC_ID);
     XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_1_VEC_ID);
     XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_2_VEC_ID);
-    //XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_3_VEC_ID);
+    XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_3_VEC_ID);
     microblaze_enable_interrupts();
 
     XTmrCtr_Start(&TimerInstancePtr,0);
@@ -5763,7 +5755,7 @@ else if (e_steps > 0) {
     // print("AXI timer2 - timer1 start \n\r");
     XTmrCtr_Start(&TimerInstancePtr3,0);
     // print("AXI timer3 start \n\r");
-    //XTmrCtr_Start(&TimerInstancePtr4,0);
+    XTmrCtr_Start(&TimerInstancePtr4,0);
   }
 
   void st_init() {
