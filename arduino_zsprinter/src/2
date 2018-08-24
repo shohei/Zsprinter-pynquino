@@ -186,7 +186,7 @@ extern "C" {
 uart uart_dev0;
 char *ok_msg = "ok\r\n";
 char temp_msg[32];
-char dispenser_cmd_msg[32];
+char temp_msg2[64];
 XUartLite UartLite1;
 char dispenser_command_bytes[1];
 
@@ -197,12 +197,6 @@ char dispenser_command_bytes[1];
 #define ENQ 0x05
 #define ACK 0x06
 #define EOT 0x04
-#define CAN 0x18
-char discharge_dispenser_string[] = "04DI  CF";
-char can_string[] = {'0','4',CAN,CAN,'6','C'};
-char a0_string[] = {ACK, STX,'0','2','A','0','2','D',ETX};
-char a2_string[] = {ACK, STX,'0','2','A','2','2','B',ETX};
-int dispenser_delay_time = 100;
 
 #define CLEAR_DISPLAY       0x1
 #define PRINT_STRING        0x3
@@ -302,12 +296,10 @@ void __cxa_pure_virtual() {
 bool all_axis;
 uint8_t current_tool_number = 0;
 
-
-#define DISPENSER_BASE_PRESSURE 4000 // 400.0[kPa]
-float extruder_base_speed = 0.14; // When F=1200 (20[mm/s]), delta_E/delta_r = 0.14 (calculated from reference G-code from KJ)
-int current_dispenser_pressure;
-bool is_first_block_element = true;
-unsigned long previous_millis_dispenser = 0;
+float extruder_speed;
+float dispenser_multiplier = 1.0;
+int dispenser_base_pressure = 4000; // 200.0[kPa]
+float dispenser_base_coefficient = 0.14 // While F=1200 (20mm/min)
 
 // look here for descriptions of gcodes: http://linuxcnc.org/handbook/gcode/g-code.html
 // http://objects.reprap.org/wiki/Mendel_User_Manual:_RepRapGCodes
@@ -1004,27 +996,13 @@ void uart_print(char * msg){
    } 
 }
 
-void rs232c_read(u8* read_data){
-//    XUartLite_Recv(&xuart[dev_id], read_data, length);
-    unsigned int ReceivedCount = 0;
-    while (1) {
-            ReceivedCount += XUartLite_Recv(&UartLite1,
-                           read_data + ReceivedCount,
-                           1);
-            if (read_data[ReceivedCount - 1] == ETX ) {
-                break;
-            }
-        }
-}
-
 void rs232c_write(char command_byte){
     dispenser_command_bytes[0] = command_byte; 
     XUartLite_Send(&UartLite1, (u8 *) dispenser_command_bytes, 1);
     usleep(1000);
 }
 
-void rs232c_print(char *msg){
-   unsigned int length = strlen(msg);
+void rs232c_print(char *msg, unsigned int length){
    if(length<16){
     XUartLite_Send(&UartLite1, (u8 *) msg, length);
     usleep(1000);
@@ -1293,7 +1271,6 @@ void initializeUART1(){
 
 char current_command[64] = {};
 int current_command_length = 0;
-u8 returned_message[32] = {};
 
 void get_command_mailbox(){
    int x_position, y_position, length;
@@ -2866,12 +2843,12 @@ void process_commands() {
 
   void update_dispenser_pressure(int channel, int target_pressure){
      //String base_command = "0EPH  CH001P";
-     sprintf(dispenser_cmd_msg, "0EPH  CH001P%d", target_pressure);
-     int string_length = strlen(dispenser_cmd_msg);
+     sprintf(temp_msg, "0EPH  CH001P%d", target_pressure);
+     int string_length = strlen(temp_msg);
      
      byte result = 0x00;
      for (int i=0;i<string_length;i++){
-     	result = result - dispenser_cmd_msg[i];
+     	result = result - temp_msg[i];
      }
      // byte result = 0x00 - 0x30 - 0x34 - 0x44 - 0x49 - 0x20 - 0x20; //-305->two's complement of 305->0b011001111->0xCF
      byte ubyte = ((result & 0b11110000) >> 4) & 0b11111111;
@@ -2881,46 +2858,16 @@ void process_commands() {
      char lbyteChar[2];
      sprintf(ubyteChar,"%x",ubyte);
      sprintf(lbyteChar,"%x",lbyte);
-
-
-     if(millis() - previous_millis_dispenser > dispenser_delay_time){
-
-       uart_print("Update pressure\r\n");
-       uart_print(dispenser_cmd_msg);
-       uart_print("\r\n");
-       sprintf(temp_msg, "%lu\r\n",previous_millis_dispenser);
-       uart_print(temp_msg);
-
-       rs232c_write(ENQ);
-       usleep(100);
-       rs232c_write(STX); 
-       rs232c_print(dispenser_cmd_msg); //do not send null terminator
-       rs232c_write(ubyteChar[0]);
-       rs232c_write(lbyteChar[0]);
-       rs232c_write(ETX); 
-
-       rs232c_read(returned_message);
-       uart_print((char *)returned_message); //do not send null terminator
-       uart_print("\r\n"); //do not send null terminator
-       bool rs232c_error = false;
-       for(int i=0;i<strlen(a0_string);i++){
-          if ((char) returned_message[i] != a0_string[i]){
-            rs232c_error = true;
-          }
-       }
-       if(rs232c_error){
-         uart_print("RS232C error\r\n");
-         rs232c_write(STX); 
-         rs232c_print(can_string); 
-         rs232c_write(ETX); 
-         dispenser_delay_time = 600;
-       } else {
-         rs232c_write(EOT);
-         dispenser_delay_time = 100;
-       }
-    }
-    previous_millis_dispenser = millis();
- 
+     
+     rs232c_write(ENQ);
+     usleep(100);
+     rs232c_write(STX); 
+     rs232c_print(temp_msg, strlen(temp_msg)); //do not send null terminator
+     rs232c_write(ubyteChar[0]);
+     rs232c_write(lbyteChar[0]);
+     rs232c_write(ETX); 
+     usleep(100);
+     rs232c_write(EOT);
   }
 
   void FlushSerialRequestResend() {
@@ -3675,8 +3622,7 @@ void process_commands() {
     block->nominal_speed = block->millimeters * inverse_second; // (mm/sec) Always > 0
     block->nominal_rate = ceil(block->step_event_count * inverse_second); // (step/sec) Always > 0
 
-    float extruder_speed = delta_mm[E_AXIS] / block->millimeters;
-    block->dispenser_multiplier = extruder_speed / extruder_base_speed;
+    extruder_speed = delta_mm[E_AXIS] / block->millimeters;
     /*
    //  segment time im micro seconds
    long segment_time = lround(1000000.0/inverse_second);
@@ -4989,14 +4935,6 @@ else if (e_steps > 0) {
 
          if(current_tool_number==1){
             e_pulse_counter++; // counter for dispenser and UV LED
-            if(is_first_block_element){
-              current_dispenser_pressure = ceil(DISPENSER_BASE_PRESSURE * current_block->dispenser_multiplier);
-              if(current_dispenser_pressure>7500) current_dispenser_pressure = 7500;
-              if(current_dispenser_pressure<200) current_dispenser_pressure = 200;
-
-              update_dispenser_pressure(1, current_dispenser_pressure);
-              is_first_block_element = false;
-            }
          } 
          if(current_tool_number==0){
             // WRITE(E_STEP_PIN, HIGH);
@@ -5104,7 +5042,6 @@ else if (e_steps > 0) {
         current_block = NULL;
         plan_discard_current_block();
 
-        is_first_block_element = true;
         //free buffer
         int buflen_accum_finished = MAILBOX_DATA(BUFLEN_ACCUM_FINISHED_DATA_ADDR); 
         MAILBOX_DATA(BUFLEN_ACCUM_FINISHED_DATA_ADDR) = buflen_accum_finished + 1;
@@ -5129,6 +5066,10 @@ else if (e_steps > 0) {
 
   // Handler for dispenser and UV LED control
   void Timer_InterruptHandler4(void *data, u8 TmrCtrNumber){
+       if(current_tool_number==1){
+        sprintf(temp_msg, "s:%f\r\n", extruder_speed);
+        uart_print(temp_msg);
+       }
         if(e_pulse_counter>0){
           uv_led_on();
           dispenser_on();
