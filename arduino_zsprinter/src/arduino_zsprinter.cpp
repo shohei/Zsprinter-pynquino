@@ -263,6 +263,7 @@ static XTmrCtr TimerInstancePtr;
 static XTmrCtr TimerInstancePtr2;
 static XTmrCtr TimerInstancePtr3;
 static XTmrCtr TimerInstancePtr4;
+static XTmrCtr TimerInstancePtr5;
 
 #define SYSMON_DEVICE_ID XPAR_SYSMON_0_DEVICE_ID //ID of xadc_wiz_0
 #define XSysMon_RawToExtVoltage(AdcData) ((((float)(AdcData))*(1.0f))/65536.0f) //(ADC 16bit result)/16/4096 = (ADC 16bit result)/65536
@@ -5143,18 +5144,6 @@ else if (e_steps > 0) {
     }
   }
 
-  // Handler for dispenser and UV LED control
-  void Timer_InterruptHandler4(void *data, u8 TmrCtrNumber){
-        if(e_pulse_counter>0){
-          uv_led_on();
-          dispenser_on();
-        } else {
-          uv_led_off();
-          dispenser_off();
-        }
-        e_pulse_counter = 0;
-  }
-
   void Timer_InterruptHandler3(void *data, u8 TmrCtrNumber)
   {
     //20Hz cycle; this is used as main loop (which is parallel to main) 
@@ -5594,6 +5583,41 @@ else if (e_steps > 0) {
     // MAILBOX_DATA_FLOAT(E_DATA_ADDR) = current_position[3];
   }
 
+  // Handler for dispenser and UV LED control
+  void Timer_InterruptHandler4(void *data, u8 TmrCtrNumber){
+        if(e_pulse_counter>0){
+          uv_led_on();
+          dispenser_on();
+        } else {
+          uv_led_off();
+          dispenser_off();
+        }
+        e_pulse_counter = 0;
+  }
+
+  void Timer_InterruptHandler5(void *data, u8 TmrCtrNumber){
+    //uart_print("handler5\r\n");
+
+    // Wait until any of the conditions satisfied
+    if( MAILBOX_CMD_ADDR!=0 && clear_to_send){
+       if(MAILBOX_CMD_ADDR!=0){
+           u32 cmd = MAILBOX_CMD_ADDR;
+           if (cmd==PRINT_STRING) {
+             clear_to_send = false;
+             get_command_mailbox();
+
+             comment_mode = false; //this is required!!
+
+             for(int i=0;i<current_command_length;i++){
+               parse_command(current_command[i],i);
+             }
+
+           }
+        }
+     }
+  }
+
+
   void initSteppers(){
     //no use of enable pin
     //  _CLR(shields_data , X_EN_PIN);
@@ -5669,7 +5693,7 @@ else if (e_steps > 0) {
     //print("##### Timer initialization start. #####\n\r");
     //print("\r\n");
     //**************************************************************************//
-    // Timer1 init
+    // Timer1 init (Stepper motor pulse generation)
     //**************************************************************************//
     int xStatus = XTmrCtr_Initialize(&TimerInstancePtr,XPAR_TMRCTR_0_DEVICE_ID);
     if(XST_SUCCESS != xStatus){
@@ -5693,7 +5717,7 @@ else if (e_steps > 0) {
         (XTC_INT_MODE_OPTION | XTC_AUTO_RELOAD_OPTION | XTC_DOWN_COUNT_OPTION));//Timer1 is DOWN counter
 
     //**************************************************************************//
-    // Timer2 init
+    // Timer2 init (Heater PWM control)
     //**************************************************************************//
     xStatus = XTmrCtr_Initialize(&TimerInstancePtr2,XPAR_TMRCTR_1_DEVICE_ID);
     if(XST_SUCCESS != xStatus){
@@ -5730,7 +5754,7 @@ else if (e_steps > 0) {
         0x0);
 
     //**************************************************************************//
-    // Timer3 init
+    // Timer3 init (Command parser: Quasi main loop)
     //**************************************************************************//
 
     xStatus = XTmrCtr_Initialize(&TimerInstancePtr3,XPAR_TMRCTR_2_DEVICE_ID);
@@ -5757,7 +5781,7 @@ else if (e_steps > 0) {
         (XTC_INT_MODE_OPTION | XTC_AUTO_RELOAD_OPTION | XTC_DOWN_COUNT_OPTION));//Timer3 is DOWN counter
 
     //**************************************************************************//
-    // Timer4 (debug)
+    // Timer4 (Diepenser and UV LED control)
     //**************************************************************************//
 
      xStatus = XTmrCtr_Initialize(&TimerInstancePtr4,XPAR_TMRCTR_3_DEVICE_ID);
@@ -5780,6 +5804,31 @@ else if (e_steps > 0) {
      XTmrCtr_SetOptions(&TimerInstancePtr4,
          0, //Channel 0
          (XTC_INT_MODE_OPTION | XTC_AUTO_RELOAD_OPTION | XTC_DOWN_COUNT_OPTION));//Timer4 is DOWN counter
+
+    //**************************************************************************//
+    // Timer5 (BRAM communication)
+    //**************************************************************************//
+
+     xStatus = XTmrCtr_Initialize(&TimerInstancePtr5,XPAR_TMRCTR_4_DEVICE_ID);
+     if(XST_SUCCESS != xStatus){
+    // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr4 ng");
+    // print("TIMER3 INIT FAILED \n\r");
+     }
+
+     XTmrCtr_SetHandler(&TimerInstancePtr5,
+         Timer_InterruptHandler5,
+         &TimerInstancePtr5);
+
+     XTmrCtr_SetResetValue(&TimerInstancePtr5,
+         0, //Channel 0
+         // 0x1dcd6500); //0.2Hz
+         0x4c4b40); //20Hz 
+         // 0x5f5e100); //1Hz -> for debug
+         //  0x1312d00);//5Hz
+
+     XTmrCtr_SetOptions(&TimerInstancePtr5,
+         0, //Channel 0
+         (XTC_INT_MODE_OPTION | XTC_AUTO_RELOAD_OPTION | XTC_DOWN_COUNT_OPTION));//Timer5 is DOWN counter
 
     //**************************************************************************//
     // Connect INTC and Timers 
@@ -5819,6 +5868,13 @@ else if (e_steps > 0) {
        // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr4c");
        // print("connect timer3 error\n\r");
      }
+     xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_4_VEC_ID,
+         (XInterruptHandler)XTmrCtr_InterruptHandler,
+         (void*)&TimerInstancePtr5);
+     if (xStatus != XST_SUCCESS){
+       // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr4c");
+       // print("connect timer3 error\n\r");
+     }
     xStatus = XIntc_Start(&IntcInstancePtr, XIN_REAL_MODE);
     if (xStatus != XST_SUCCESS){
       // SeeedOled.setTextXY(0,0);SeeedOled.putString("intc");
@@ -5828,6 +5884,7 @@ else if (e_steps > 0) {
     XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_1_VEC_ID);
     XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_2_VEC_ID);
     XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_3_VEC_ID);
+    XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_4_VEC_ID);
     microblaze_enable_interrupts();
 
     XTmrCtr_Start(&TimerInstancePtr,0);
@@ -5839,6 +5896,9 @@ else if (e_steps > 0) {
     XTmrCtr_Start(&TimerInstancePtr3,0);
     // print("AXI timer3 start \n\r");
     XTmrCtr_Start(&TimerInstancePtr4,0);
+    // print("AXI timer4 start \n\r");
+    XTmrCtr_Start(&TimerInstancePtr5,0);
+    // print("AXI timer5 start \n\r");
   }
 
   void st_init() {
