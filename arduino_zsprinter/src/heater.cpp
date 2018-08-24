@@ -358,6 +358,8 @@ void PID_autotune(XSysMon *SysMonInstPtr, int PIDAT_test_temp)
 	float PIDAT_Ku, PIDAT_Tu;
 	float PIDAT_Kp, PIDAT_Ki, PIDAT_Kd;
 
+        char temp_msg[32];
+
 #define PIDAT_TIME_FACTOR ((HEATER_CHECK_INTERVAL*256.0) / 1000.0)
 
 	//  showString(PSTR("PID Autotune start\r\n"));
@@ -437,6 +439,18 @@ void PID_autotune(XSysMon *SysMonInstPtr, int PIDAT_test_temp)
 						//            showString(PSTR(" d: "));    Serial.print(PIDAT_d);
 						//            showString(PSTR(" min: "));  Serial.print(PIDAT_min);
 						//            showString(PSTR(" max: "));  Serial.println(PIDAT_max);
+						uart_print(" bias: ");
+                                                sprintf(temp_msg, "%lu", PIDAT_bias);
+						uart_print(temp_msg);
+						uart_print(" d: ");
+                                                sprintf(temp_msg, "%lu", PIDAT_d);
+						uart_print(temp_msg);
+						uart_print(" min: ");
+                                                sprintf(temp_msg, "%f", PIDAT_min);
+						uart_print(temp_msg);
+						uart_print(" max: ");  
+                                                sprintf(temp_msg, "%f", PIDAT_min);
+						uart_print(temp_msg);
 
 						if(PIDAT_cycles > 2)
 						{
@@ -445,6 +459,14 @@ void PID_autotune(XSysMon *SysMonInstPtr, int PIDAT_test_temp)
 
 							//              showString(PSTR(" Ku: ")); Serial.print(PIDAT_Ku);
 							//              showString(PSTR(" Tu: ")); Serial.println(PIDAT_Tu);
+							uart_print(" Ku: ");
+                                                        sprintf(temp_msg, "%f", PIDAT_Ku);
+						        uart_print(temp_msg);
+							uart_print(" Tu: ");
+                                                        sprintf(temp_msg, "%f", PIDAT_Tu);
+						        uart_print(temp_msg);
+							uart_print("\r\n");
+
 
 							PIDAT_Kp = 0.60*PIDAT_Ku;
 							PIDAT_Ki = 2*PIDAT_Kp/PIDAT_Tu;
@@ -456,6 +478,23 @@ void PID_autotune(XSysMon *SysMonInstPtr, int PIDAT_test_temp)
 							//              showString(PSTR(" CFG Kp: ")); Serial.println((unsigned int)(PIDAT_Kp*256));
 							//              showString(PSTR(" CFG Ki: ")); Serial.println((unsigned int)(PIDAT_Ki*PIDAT_TIME_FACTOR));
 							//              showString(PSTR(" CFG Kd: ")); Serial.println((unsigned int)(PIDAT_Kd*PIDAT_TIME_FACTOR));
+							uart_print(" Clasic PID \r\n");
+							uart_print(" Kp: "); 
+                                                        sprintf(temp_msg, "%f\r\n", PIDAT_Kp);
+						        uart_print(temp_msg);
+							uart_print(" Ki: "); 
+                                                        sprintf(temp_msg, "%f\r\n", PIDAT_Ki);
+						        uart_print(temp_msg);
+							uart_print(" Kd: "); 
+                                                        sprintf(temp_msg, "%f\r\n", PIDAT_Kd);
+						        uart_print(temp_msg);
+							uart_print(" CFG Kp: "); 
+                                                        sprintf(temp_msg, "%d\r\n", (unsigned int)(PIDAT_Kp*256));
+						        uart_print(temp_msg);
+							uart_print(" CFG Ki: "); 
+                                                        sprintf(temp_msg, "%d\r\n", (unsigned int)(PIDAT_Ki*PIDAT_TIME_FACTOR));
+							uart_print(" CFG Kd: "); 
+                                                        sprintf(temp_msg, "%d\r\n", (unsigned int)(PIDAT_Kd*PIDAT_TIME_FACTOR));
 
 							PIDAT_Kp = 0.30*PIDAT_Ku;
 							PIDAT_Ki = PIDAT_Kp/PIDAT_Tu;
@@ -464,15 +503,30 @@ void PID_autotune(XSysMon *SysMonInstPtr, int PIDAT_test_temp)
 							//              showString(PSTR(" CFG Kp: ")); Serial.println((unsigned int)(PIDAT_Kp*256));
 							//              showString(PSTR(" CFG Ki: ")); Serial.println((unsigned int)(PIDAT_Ki*PIDAT_TIME_FACTOR));
 							//              showString(PSTR(" CFG Kd: ")); Serial.println((unsigned int)(PIDAT_Kd*PIDAT_TIME_FACTOR));
-							/*
-              PIDAT_Kp = 0.20*PIDAT_Ku;
-              PIDAT_Ki = 2*PIDAT_Kp/PIDAT_Tu;
-              PIDAT_Kd = PIDAT_Kp*PIDAT_Tu/3;
-              showString(PSTR(" No overshoot \r\n"));
-              showString(PSTR(" CFG Kp: ")); Serial.println((unsigned int)(PIDAT_Kp*256));
-              showString(PSTR(" CFG Ki: ")); Serial.println((unsigned int)(PIDAT_Ki*PIDAT_TIME_FACTOR));
-              showString(PSTR(" CFG Kd: ")); Serial.println((unsigned int)(PIDAT_Kd*PIDAT_TIME_FACTOR));
-							 */
+							uart_print(" Some overshoot \r\n");
+							uart_print(" CFG Kp: "); 
+                                                        sprintf(temp_msg, "%d\r\n", (unsigned int)(PIDAT_Kp*256));
+						        uart_print(temp_msg);
+							uart_print(" CFG Ki: "); 
+                                                        sprintf(temp_msg, "%d\r\n", (unsigned int)(PIDAT_Ki*PIDAT_TIME_FACTOR));
+							uart_print(" CFG Kd: "); 
+                                                        sprintf(temp_msg, "%d\r\n", (unsigned int)(PIDAT_Kd*PIDAT_TIME_FACTOR));
+							
+                                                        PIDAT_Kp = 0.20*PIDAT_Ku;
+                                                        PIDAT_Ki = 2*PIDAT_Kp/PIDAT_Tu;
+                                                        PIDAT_Kd = PIDAT_Kp*PIDAT_Tu/3;
+                                                        // showString(PSTR(" No overshoot \r\n"));
+                                                        // showString(PSTR(" CFG Kp: ")); Serial.println((unsigned int)(PIDAT_Kp*256));
+                                                        // showString(PSTR(" CFG Ki: ")); Serial.println((unsigned int)(PIDAT_Ki*PIDAT_TIME_FACTOR));
+                                                        // showString(PSTR(" CFG Kd: ")); Serial.println((unsigned int)(PIDAT_Kd*PIDAT_TIME_FACTOR));
+							uart_print(" No overshoot \r\n");
+							uart_print(" CFG Kp: "); 
+                                                        sprintf(temp_msg, "%d\r\n", (unsigned int)(PIDAT_Kp*256));
+						        uart_print(temp_msg);
+							uart_print(" CFG Ki: "); 
+                                                        sprintf(temp_msg, "%d\r\n", (unsigned int)(PIDAT_Ki*PIDAT_TIME_FACTOR));
+							uart_print(" CFG Kd: "); 
+                                                        sprintf(temp_msg, "%d\r\n", (unsigned int)(PIDAT_Kd*PIDAT_TIME_FACTOR));
 						}
 					}
 					PIDAT_PWM_val = (PIDAT_bias + PIDAT_d);
@@ -501,6 +555,9 @@ void PID_autotune(XSysMon *SysMonInstPtr, int PIDAT_test_temp)
 		if(millis() - PIDAT_temp_millis > 2000)
 		{
 			PIDAT_temp_millis = millis();
+                        sprintf(temp_msg, "ok T:%d @:%u\r\n",PIDAT_input, (unsigned char)PIDAT_PWM_val*1);
+                        uart_print(temp_msg);
+                        uart_print("\r\n");
 			//showString(PSTR("ok T:"));
 			//      print(PIDAT_input);
 			//showString(PSTR(" @:"));
@@ -510,11 +567,14 @@ void PID_autotune(XSysMon *SysMonInstPtr, int PIDAT_test_temp)
 		if(((millis() - PIDAT_t1) + (millis() - PIDAT_t2)) > (10L*60L*1000L*2L))
 		{
 			///  showString(PSTR("PID Autotune failed! timeout\r\n"));
+			uart_print("PID Autotune failed! timeout\r\n");
+                        uart_print("\r\n");
 			return;
 		}
 
 		if(PIDAT_cycles > 5)
 		{
+			uart_print("PID Autotune finished ! Place the Kp, Ki and Kd constants in the configuration.h\r\n");
 			//showString(PSTR("PID Autotune finished ! Place the Kp, Ki and Kd constants in the configuration.h\r\n"));
 			return;
 		}

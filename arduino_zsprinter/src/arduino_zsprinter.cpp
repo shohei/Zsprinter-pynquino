@@ -1001,7 +1001,23 @@ void uart_print(char * msg){
     usleep(1000);
     uart_write(uart_dev0,msg+16,length-16);
     usleep(1000);
-   } 
+   } else if(length<48){
+    uart_write(uart_dev0,msg,16);
+    usleep(1000);
+    uart_write(uart_dev0,msg+16,16);
+    usleep(1000);
+    uart_write(uart_dev0,msg+32,length-32);
+    usleep(1000);
+   } else {
+    uart_write(uart_dev0,msg,16);
+    usleep(1000);
+    uart_write(uart_dev0,msg+16,16);
+    usleep(1000);
+    uart_write(uart_dev0,msg+32,16);
+    usleep(1000);
+    uart_write(uart_dev0,msg+48,length-48);
+    usleep(1000);
+   }
 }
 
 void rs232c_read(u8* read_data){
@@ -5936,7 +5952,7 @@ else if (e_steps > 0) {
     //Serial.println("}");
   }
 
-    //Serial.print("DEBUG"); Serial.print(message); Serial.print(": {");
+    //Serial.print("DEBUG "); Serial.print(message); Serial.print(": {");
     for(int i=0; i < array_lenght; i++) {
       //Serial.print(value[i]);
       if(i != array_lenght-1) Serial.print(", ");
