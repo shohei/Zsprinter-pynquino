@@ -302,6 +302,7 @@ void __cxa_pure_virtual() {
 
 bool all_axis;
 uint8_t current_tool_number = 0;
+uint8_t last_tool_number;
 
 
 #define DISPENSER_BASE_PRESSURE 4000 // 400.0[kPa]
@@ -309,6 +310,8 @@ float extruder_base_speed = 0.14; // When F=1200 (20[mm/s]), delta_E/delta_r = 0
 int current_dispenser_pressure = DISPENSER_BASE_PRESSURE;
 int last_dispenser_pressure = DISPENSER_BASE_PRESSURE;
 bool is_first_block_element = true;
+bool is_dispenser_running = false;
+unsigned long previous_discarded_millis;
 unsigned long previous_millis_dispenser = 0;
 int success_count;
 int total_count;
@@ -1859,6 +1862,7 @@ void dumpAllPins(){
  *   S1           Don't move the tool in XY after change
  */
 inline void gcode_T(uint8_t tmp_extruder) {
+  last_tool_number = current_tool_number;
   current_tool_number = tmp_extruder;
   //sprintf(temp_msg, "current tool:%d\r\n",current_tool_number);
   //uart_print(temp_msg); 
@@ -2850,6 +2854,8 @@ void process_commands() {
     else if (code_seen('T')) {
       gcode_T(code_value());
     } else {
+      sprintf(temp_msg, "Unknown command:%s\r\n", cmdbuffer[bufindr]);
+      uart_print(temp_msg);
       // printf("Unknown command:%s\r\n",cmdbuffer[bufindr]);
       //showString(PSTR("Unknown command:\r\n"));
       //Serial.println(cmdbuffer[bufindr]);
@@ -3699,6 +3705,8 @@ void process_commands() {
 
     float extruder_speed = delta_mm[E_AXIS] / block->millimeters;
     block->dispenser_multiplier = extruder_speed / extruder_base_speed;
+
+    
     /*
    //  segment time im micro seconds
    long segment_time = lround(1000000.0/inverse_second);
@@ -5011,7 +5019,11 @@ else if (e_steps > 0) {
 
          if(current_tool_number==1){
             e_pulse_counter++; // counter for dispenser and UV LED
+
             if(is_first_block_element){
+              uv_led_on();
+              dispenser_on();
+              is_dispenser_running = true;
               current_dispenser_pressure = ceil(DISPENSER_BASE_PRESSURE * current_block->dispenser_multiplier);
               if(current_dispenser_pressure>7500) current_dispenser_pressure = 7500;
               if(current_dispenser_pressure<200) current_dispenser_pressure = 200;
@@ -5019,6 +5031,7 @@ else if (e_steps > 0) {
               is_first_block_element = false;
             }
          } 
+
          if(current_tool_number==0){
             // WRITE(E_STEP_PIN, HIGH);
             _SET(shields_data , STEP_E_PIN);
@@ -5126,6 +5139,8 @@ else if (e_steps > 0) {
         plan_discard_current_block();
 
         is_first_block_element = true;
+        is_dispenser_running = false;
+        previous_discarded_millis = millis();
         //free buffer
         int buflen_accum_finished = MAILBOX_DATA(BUFLEN_ACCUM_FINISHED_DATA_ADDR); 
         MAILBOX_DATA(BUFLEN_ACCUM_FINISHED_DATA_ADDR) = buflen_accum_finished + 1;
@@ -5133,6 +5148,7 @@ else if (e_steps > 0) {
     }
   }
 
+  // 500Hz
   void Timer_InterruptHandler2(void *data, u8 TmrCtrNumber)
   {
     //500Hz cycle; this is used for the heater management
@@ -5148,6 +5164,7 @@ else if (e_steps > 0) {
     }
   }
 
+  //20Hz
   void Timer_InterruptHandler3(void *data, u8 TmrCtrNumber)
   {
     //20Hz cycle; this is used as main loop (which is parallel to main) 
@@ -5585,26 +5602,31 @@ else if (e_steps > 0) {
     // MAILBOX_DATA_FLOAT(Y_DATA_ADDR) = current_position[1];
     // MAILBOX_DATA_FLOAT(Z_DATA_ADDR) = current_position[2];
     // MAILBOX_DATA_FLOAT(E_DATA_ADDR) = current_position[3];
+
+
+
+
+
   }
 
   // Handler for dispenser and UV LED control
+  // 1Hz 
   void Timer_InterruptHandler4(void *data, u8 TmrCtrNumber){
       if(last_dispenser_pressure != current_dispenser_pressure){
         update_dispenser_pressure(1, current_dispenser_pressure);
         last_dispenser_pressure = current_dispenser_pressure;
        }
 
-        if(e_pulse_counter>0){
-          uv_led_on();
-          dispenser_on();
-        } else {
-          uv_led_off();
-          dispenser_off();
-        }
-        e_pulse_counter = 0;
   }
 
+//20Hz
   void Timer_InterruptHandler5(void *data, u8 TmrCtrNumber){
+
+        if(!is_dispenser_running &&  (millis() - previous_discarded_millis > 100 ) && e_pulse_counter==0){
+          uv_led_off();
+          dispenser_off();
+        } 
+        e_pulse_counter = 0;
 
     // Wait until any of the conditions satisfied
     if( MAILBOX_CMD_ADDR!=0 && clear_to_send){
