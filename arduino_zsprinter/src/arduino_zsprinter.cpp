@@ -309,6 +309,8 @@ float extruder_base_speed = 0.14; // When F=1200 (20[mm/s]), delta_E/delta_r = 0
 int current_dispenser_pressure;
 bool is_first_block_element = true;
 unsigned long previous_millis_dispenser = 0;
+int success_count;
+int total_count;
 
 // look here for descriptions of gcodes: http://linuxcnc.org/handbook/gcode/g-code.html
 // http://objects.reprap.org/wiki/Mendel_User_Manual:_RepRapGCodes
@@ -2882,31 +2884,29 @@ void process_commands() {
   }
 
   void update_dispenser_pressure(int channel, int target_pressure){
-     //String base_command = "0EPH  CH001P";
-     sprintf(dispenser_cmd_msg, "0EPH  CH001P%d", target_pressure);
-     int string_length = strlen(dispenser_cmd_msg);
-     
-     byte result = 0x00;
-     for (int i=0;i<string_length;i++){
-     	result = result - dispenser_cmd_msg[i];
-     }
-     // byte result = 0x00 - 0x30 - 0x34 - 0x44 - 0x49 - 0x20 - 0x20; //-305->two's complement of 305->0b011001111->0xCF
-     byte ubyte = ((result & 0b11110000) >> 4) & 0b11111111;
-     byte lbyte = result & 0b00001111;
-     
-     char ubyteChar[2];
-     char lbyteChar[2];
-     sprintf(ubyteChar,"%x",ubyte);
-     sprintf(lbyteChar,"%x",lbyte);
+     if(millis() - previous_millis_dispenser > 10){
+        //String base_command = "0EPH  CH001P";
+        sprintf(dispenser_cmd_msg, "0EPH  CH001P%d", target_pressure);
+        int string_length = strlen(dispenser_cmd_msg);
+        
+        byte result = 0x00;
+        for (int i=0;i<string_length;i++){
+        	result = result - dispenser_cmd_msg[i];
+        }
+        // byte result = 0x00 - 0x30 - 0x34 - 0x44 - 0x49 - 0x20 - 0x20; //-305->two's complement of 305->0b011001111->0xCF
+        byte ubyte = ((result & 0b11110000) >> 4) & 0b11111111;
+        byte lbyte = result & 0b00001111;
+        
+        char ubyteChar[2];
+        char lbyteChar[2];
+        sprintf(ubyteChar,"%x",ubyte);
+        sprintf(lbyteChar,"%x",lbyte);
 
-
-     if(millis() - previous_millis_dispenser > dispenser_delay_time){
-
-       uart_print("Update pressure\r\n");
-       uart_print(dispenser_cmd_msg);
-       uart_print("\r\n");
-       sprintf(temp_msg, "%lu\r\n",previous_millis_dispenser);
-       uart_print(temp_msg);
+       //uart_print("Update pressure\r\n");
+       //uart_print(dispenser_cmd_msg);
+       //uart_print("\r\n");
+       //sprintf(temp_msg, "%lu\r\n",previous_millis_dispenser);
+       //uart_print(temp_msg);
 
        rs232c_write(ENQ);
        usleep(100);
@@ -2917,8 +2917,8 @@ void process_commands() {
        rs232c_write(ETX); 
 
        rs232c_read(returned_message);
-       uart_print((char *)returned_message); //do not send null terminator
-       uart_print("\r\n"); //do not send null terminator
+       //uart_print((char *)returned_message); //do not send null terminator
+       //uart_print("\r\n"); //do not send null terminator
        bool rs232c_error = false;
        for(int i=0;i<strlen(a0_string);i++){
           if ((char) returned_message[i] != a0_string[i]){
@@ -2926,17 +2926,21 @@ void process_commands() {
           }
        }
        if(rs232c_error){
-         uart_print("RS232C error\r\n");
+         //uart_print("RS232C error\r\n");
          rs232c_write(STX); 
          rs232c_print(can_string); 
          rs232c_write(ETX); 
-         dispenser_delay_time = 600;
+         //dispenser_delay_time = 600;
        } else {
          rs232c_write(EOT);
-         dispenser_delay_time = 100;
+         //dispenser_delay_time = 100;
+         success_count++;
        }
+       total_count++;
+      sprintf(temp_msg, "success:%d total:%d\r\n", success_count, total_count); 
+      uart_print(temp_msg);
+      previous_millis_dispenser = millis();
     }
-    previous_millis_dispenser = millis();
  
   }
 
