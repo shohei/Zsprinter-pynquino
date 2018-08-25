@@ -306,7 +306,8 @@ uint8_t current_tool_number = 0;
 
 #define DISPENSER_BASE_PRESSURE 4000 // 400.0[kPa]
 float extruder_base_speed = 0.14; // When F=1200 (20[mm/s]), delta_E/delta_r = 0.14 (calculated from reference G-code from KJ)
-int current_dispenser_pressure;
+int current_dispenser_pressure = DISPENSER_BASE_PRESSURE;
+int last_dispenser_pressure = DISPENSER_BASE_PRESSURE;
 bool is_first_block_element = true;
 unsigned long previous_millis_dispenser = 0;
 int success_count;
@@ -2884,7 +2885,7 @@ void process_commands() {
   }
 
   void update_dispenser_pressure(int channel, int target_pressure){
-     if(millis() - previous_millis_dispenser > 10){
+     if(millis() - previous_millis_dispenser > 100){
         //String base_command = "0EPH  CH001P";
         sprintf(dispenser_cmd_msg, "0EPH  CH001P%d", target_pressure);
         int string_length = strlen(dispenser_cmd_msg);
@@ -5015,7 +5016,6 @@ else if (e_steps > 0) {
               if(current_dispenser_pressure>7500) current_dispenser_pressure = 7500;
               if(current_dispenser_pressure<200) current_dispenser_pressure = 200;
 
-              update_dispenser_pressure(1, current_dispenser_pressure);
               is_first_block_element = false;
             }
          } 
@@ -5589,6 +5589,11 @@ else if (e_steps > 0) {
 
   // Handler for dispenser and UV LED control
   void Timer_InterruptHandler4(void *data, u8 TmrCtrNumber){
+      if(last_dispenser_pressure != current_dispenser_pressure){
+        update_dispenser_pressure(1, current_dispenser_pressure);
+        last_dispenser_pressure = current_dispenser_pressure;
+       }
+
         if(e_pulse_counter>0){
           uv_led_on();
           dispenser_on();
@@ -5600,7 +5605,6 @@ else if (e_steps > 0) {
   }
 
   void Timer_InterruptHandler5(void *data, u8 TmrCtrNumber){
-    //uart_print("handler5\r\n");
 
     // Wait until any of the conditions satisfied
     if( MAILBOX_CMD_ADDR!=0 && clear_to_send){
