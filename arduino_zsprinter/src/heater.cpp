@@ -595,6 +595,7 @@ void manage_heater(XSysMon *SysMonInstPtr)
 {
 
 	//Temperatur Monitor for repetier
+        //20Hz
 	if((millis() - previous_millis_monitor) > 250 )
 	{
 		previous_millis_monitor = millis();

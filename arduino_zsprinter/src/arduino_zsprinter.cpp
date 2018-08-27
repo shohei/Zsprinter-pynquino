@@ -2831,15 +2831,18 @@ void process_commands() {
       break;
 
     case 709:
-      homeaxis(X_AXIS);
+      //homeaxis(X_AXIS);
       break;
     case 710:
-      homeaxis(Y_AXIS);
+      //homeaxis(Y_AXIS);
       break;
     case 711:
-      homeaxis(Z_AXIS);
+      //homeaxis(Z_AXIS);
       break;
-
+    case 712:
+      sprintf(temp_msg, "P:%d I:%d D:%d\r\n",PID_Kp, PID_Ki, PID_Kd);
+      uart_print(temp_msg);
+      break;
 
     default:
 #ifdef SEND_WRONG_CMD_INFO
@@ -5167,6 +5170,14 @@ else if (e_steps > 0) {
   //20Hz
   void Timer_InterruptHandler3(void *data, u8 TmrCtrNumber)
   {
+
+    //check heater every n milliseconds
+      manage_heater(SysMonInstPtr);
+      manage_inactivity(1);
+    #if (MINIMUM_FAN_START_SPEED > 0)
+      manage_fan_start_speed();
+    #endif
+
     //20Hz cycle; this is used as main loop (which is parallel to main) 
   	if(is_homing){
            #ifdef DELTA
@@ -5586,15 +5597,7 @@ else if (e_steps > 0) {
        }
     }
   }
-  // heater is not checked, so comment it out
   
-      //check heater every n milliseconds
-      manage_heater(SysMonInstPtr);
-      manage_inactivity(1);
-    #if (MINIMUM_FAN_START_SPEED > 0)
-      manage_fan_start_speed();
-    #endif
-
     //update current temperature
     MAILBOX_DATA_FLOAT(HOTEND_TEMP_ADDR) =  analog2temp(current_raw);
     // MAILBOX_DATA(HOTEND_TEMP_RAW_ADDR) =  current_raw2;
