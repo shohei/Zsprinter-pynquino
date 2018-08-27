@@ -59,7 +59,8 @@
 #define XAXIS_STEPS_PER_MM 160 
 #define YAXIS_STEPS_PER_MM 160 
 #define ZAXIS_STEPS_PER_MM 796.4 
-#define EAXIS_STEPS_PER_MM 188.992428 //should be modified based on measurement
+//#define EAXIS_STEPS_PER_MM 188.992428 //should be modified based on measurement
+#define EAXIS_STEPS_PER_MM 1277 //should be modified based on measurement
 // #define EAXIS_STEPS_PER_MM 700 //182:160*92.65/80 (original: 700)
 
 //// Calibration variables

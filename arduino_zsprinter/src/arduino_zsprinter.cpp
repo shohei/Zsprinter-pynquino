@@ -2257,6 +2257,13 @@ void process_commands() {
 #ifdef CHAIN_OF_COMMAND
       st_synchronize(); // wait for all movements to finish
 #endif
+      if(code_seen('T')){
+        if(code_value()==1){
+          //ignore temperature of dispenser head
+          break;
+        }
+      }
+
       if (code_seen('S'))
         target_raw = temp2analogh(target_temp = code_value());
 #ifdef WATCHPERIOD
@@ -2344,6 +2351,13 @@ void process_commands() {
 // #ifdef CHAIN_OF_COMMAND
 //       st_synchronize(); // wait for all movements to finish
 // #endif
+      if(code_seen('T')){
+        if(code_value()==1){
+          //ignore temperature of dispenser head
+          break;
+        }
+      }
+
       if (code_seen('S'))
         target_raw = temp2analogh(target_temp = code_value());
 // #ifdef WATCHPERIOD
