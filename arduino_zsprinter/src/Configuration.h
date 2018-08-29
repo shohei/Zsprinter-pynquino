@@ -56,9 +56,11 @@
 //#define MAX_DELTA_SEGMENTS_PER_LINE 30
 // Calculations
 // DEFAULT_AXIS_STEPS_PER_UNIT:  { 80, 80, 398.2, 94.4962144, 1000 } // extracted from KJ's implementation 
-#define XAXIS_STEPS_PER_MM 160 
-#define YAXIS_STEPS_PER_MM 160 
-#define ZAXIS_STEPS_PER_MM 796.4 
+//#define XAXIS_STEPS_PER_MM 160 
+//#define YAXIS_STEPS_PER_MM 160 
+#define XAXIS_STEPS_PER_MM 233  
+#define YAXIS_STEPS_PER_MM 233
+#define ZAXIS_STEPS_PER_MM 1158
 //#define EAXIS_STEPS_PER_MM 188.992428 //should be modified based on measurement
 #define EAXIS_STEPS_PER_MM 1277 //should be modified based on measurement
 // #define EAXIS_STEPS_PER_MM 700 //182:160*92.65/80 (original: 700)
@@ -388,7 +390,7 @@ const int dropsegments=5; //everything with less than this number of steps will 
 #define HEATER_CURRENT 255
 
 // How often should the heater check for new temp readings, in milliseconds
-#define HEATER_CHECK_INTERVAL 20
+#define HEATER_CHECK_INTERVAL 50
 //#define HEATER_CHECK_INTERVAL 500
 #define BED_CHECK_INTERVAL 5000
 

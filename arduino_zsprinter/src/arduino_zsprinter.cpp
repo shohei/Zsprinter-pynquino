@@ -189,6 +189,7 @@ char temp_msg[32];
 char dispenser_cmd_msg[32];
 XUartLite UartLite1;
 char dispenser_command_bytes[1];
+bool cold_extrusion = false;
 
 // settings for Musashi dispenser
 #define STX 0x02
@@ -2021,20 +2022,27 @@ void process_commands() {
 //      }
     
       //temporary hack for delta
-      #ifdef DELTA
-        //G92 E0
-        codenum = code_value();
-        current_position[E_AXIS] = codenum;
-        position[E_AXIS] = -1*last_e_steps;
-      #endif
+      //#ifdef DELTA
+      //G92 E0
+      //  codenum = code_value();
+      //  current_position[E_AXIS] = codenum;
+      //  position[E_AXIS] = -1*last_e_steps;
+      //#endif
 
-       for (int i = 0; i < NUM_AXIS; i++) {
+      for (int i = 0; i < NUM_AXIS; i++) {
          if (code_seen(axis_codes[i]))
            current_position[i] = code_value();
        }
+
       plan_set_position(current_position[X_AXIS],
           current_position[Y_AXIS], current_position[Z_AXIS],
           current_position[E_AXIS]);
+
+      if (!code_seen(axis_codes[E_AXIS])){
+        current_position[E_AXIS] = code_value();
+        position[E_AXIS] = -1*last_e_steps;
+      }
+
       break;
     default:
 #ifdef SEND_WRONG_CMD_INFO
@@ -2857,6 +2865,11 @@ void process_commands() {
       sprintf(temp_msg, "P:%d I:%d D:%d\r\n",PID_Kp, PID_Ki, PID_Kd);
       uart_print(temp_msg);
       break;
+    case 713:
+      cold_extrusion = !(cold_extrusion);
+      if(cold_extrusion) uart_print("Cold extrusion enabled\r\n");
+      if(!cold_extrusion) uart_print("Cold extrusion disabled\r\n");
+      break;
 
     default:
 #ifdef SEND_WRONG_CMD_INFO
@@ -2955,14 +2968,18 @@ void process_commands() {
          rs232c_print(can_string); 
          rs232c_write(ETX); 
          //dispenser_delay_time = 600;
+        //sprintf(temp_msg, "res:%d,0\r\n", millis()); 
+        ///uart_print(temp_msg);
        } else {
          rs232c_write(EOT);
          //dispenser_delay_time = 100;
          success_count++;
+         //sprintf(temp_msg, "res:%d,1\r\n", millis()); 
+         //uart_print(temp_msg);
        }
        total_count++;
-      sprintf(temp_msg, "success:%d total:%d\r\n", success_count, total_count); 
-      uart_print(temp_msg);
+      //sprintf(temp_msg, "success:%d total:%d\r\n", success_count, total_count); 
+      //uart_print(temp_msg);
       previous_millis_dispenser = millis();
     }
  
@@ -3611,6 +3628,8 @@ void process_commands() {
     block->step_event_count = max(block->steps_x,
         max(block->steps_y, max(block->steps_z, block->steps_e)));
     // printf("step x: %d, step y: %d, step z: %d, step e: %d\r\n", block->steps_x, block->steps_y, block->steps_z, block->steps_e);
+    //sprintf(temp_msg, "x: %d, y: %d, z: %d, e: %d\r\n", block->steps_x, block->steps_y, block->steps_z, block->steps_e);
+    //uart_print(temp_msg);
 
     // Bail if this is a zero-length block
     if (block->step_event_count <= dropsegments) {
@@ -5038,8 +5057,10 @@ else if (e_steps > 0) {
             e_pulse_counter++; // counter for dispenser and UV LED
 
             if(is_first_block_element){
-              uv_led_on();
-              dispenser_on();
+              if(!cold_extrusion){
+                uv_led_on();
+                dispenser_on();
+              }
               is_dispenser_running = true;
               current_dispenser_pressure = ceil(DISPENSER_BASE_PRESSURE * current_block->dispenser_multiplier);
               if(current_dispenser_pressure>7500) current_dispenser_pressure = 7500;
@@ -5629,11 +5650,12 @@ else if (e_steps > 0) {
   // Handler for dispenser and UV LED control
   // 1Hz 
   void Timer_InterruptHandler4(void *data, u8 TmrCtrNumber){
+    if(!cold_extrusion){
       if(last_dispenser_pressure != current_dispenser_pressure){
         update_dispenser_pressure(1, current_dispenser_pressure);
         last_dispenser_pressure = current_dispenser_pressure;
        }
-
+    }
   }
 
 //20Hz
