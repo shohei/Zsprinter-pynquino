@@ -5652,7 +5652,7 @@ else if (e_steps > 0) {
   void Timer_InterruptHandler4(void *data, u8 TmrCtrNumber){
     if(!cold_extrusion){
       if(last_dispenser_pressure != current_dispenser_pressure){
-        update_dispenser_pressure(1, current_dispenser_pressure);
+        //update_dispenser_pressure(1, current_dispenser_pressure);
         last_dispenser_pressure = current_dispenser_pressure;
        }
     }
