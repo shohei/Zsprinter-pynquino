@@ -4325,7 +4325,9 @@ void process_commands() {
 
   void wait_for_1_8us(){
     /* NOP inserted:So that high time is 1.8us approximately */
-    for(int i=0;i<5;i++){
+    // edited: wait is 1.9us according to the Pololu website.
+    // Below is supposed to wait 2.0us
+    for(int i=0;i<22;i++){
       asm volatile("nop");
     }
   }
