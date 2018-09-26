@@ -316,6 +316,7 @@ unsigned long previous_discarded_millis;
 unsigned long previous_millis_dispenser = 0;
 int success_count;
 int total_count;
+bool use_dispenser = true;
 
 // look here for descriptions of gcodes: http://linuxcnc.org/handbook/gcode/g-code.html
 // http://objects.reprap.org/wiki/Mendel_User_Manual:_RepRapGCodes
@@ -2850,6 +2851,15 @@ void process_commands() {
         target_pressure = code_value();
       }
       update_dispenser_pressure(1, target_pressure); 
+      break;
+
+    case 705:
+      use_dispenser = !use_dispenser;  
+      if(use_dispenser){
+      	uart_print("dispenser pressure control enabled.\r\n");
+      } else {
+      	uart_print("dispenser pressure control disabled.\r\n");
+      }
       break;
 
     case 709:
@@ -5654,7 +5664,9 @@ else if (e_steps > 0) {
   void Timer_InterruptHandler4(void *data, u8 TmrCtrNumber){
     if(!cold_extrusion){
       if(last_dispenser_pressure != current_dispenser_pressure){
-        //update_dispenser_pressure(1, current_dispenser_pressure);
+      	if(use_dispenser){
+          update_dispenser_pressure(1, current_dispenser_pressure);
+      	}
         last_dispenser_pressure = current_dispenser_pressure;
        }
     }
