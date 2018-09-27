@@ -306,7 +306,7 @@ uint8_t current_tool_number = 0;
 uint8_t last_tool_number;
 
 
-#define DISPENSER_BASE_PRESSURE 4000 // 400.0[kPa]
+#define DISPENSER_BASE_PRESSURE 2000 // 200.0[kPa]
 float extruder_base_speed = 0.14; // When F=1200 (20[mm/s]), delta_E/delta_r = 0.14 (calculated from reference G-code from KJ)
 int current_dispenser_pressure = DISPENSER_BASE_PRESSURE;
 int last_dispenser_pressure = DISPENSER_BASE_PRESSURE;
