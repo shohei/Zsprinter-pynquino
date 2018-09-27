@@ -61,6 +61,7 @@ mrproper:
 	-@echo ' '
 
 reload:
+	git stash
 	git pull origin master
 	make mrproper
 	make 
