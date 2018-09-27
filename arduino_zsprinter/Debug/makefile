@@ -60,7 +60,11 @@ mrproper:
 	-$(RM) $(EXECUTABLES)$(OBJS)$(S_UPPER_DEPS)$(C_DEPS)$(ELFSIZE) arduino_zsprinter.elf arduino_zsprinter.bin
 	-@echo ' '
 
-
+reload:
+	git pull origin master
+	make mrproper
+	make 
+	cp arduino_zsprinter.bin ~/pynq/lib/arduino
 
 secondary-outputs: $(ELFSIZE) arduino_zsprinter.bin
 
