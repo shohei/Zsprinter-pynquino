@@ -58,9 +58,10 @@
 // DEFAULT_AXIS_STEPS_PER_UNIT:  { 80, 80, 398.2, 94.4962144, 1000 } // extracted from KJ's implementation 
 //#define XAXIS_STEPS_PER_MM 160 
 //#define YAXIS_STEPS_PER_MM 160 
-#define XAXIS_STEPS_PER_MM 233  
-#define YAXIS_STEPS_PER_MM 233
-#define ZAXIS_STEPS_PER_MM 1158
+#define XAXIS_STEPS_PER_MM 160  
+#define YAXIS_STEPS_PER_MM 160 
+// #define ZAXIS_STEPS_PER_MM 1158
+#define ZAXIS_STEPS_PER_MM 800 
 //#define EAXIS_STEPS_PER_MM 188.992428 //should be modified based on measurement
 #define EAXIS_STEPS_PER_MM 1277 //should be modified based on measurement
 // #define EAXIS_STEPS_PER_MM 700 //182:160*92.65/80 (original: 700)
@@ -82,8 +83,8 @@
 // The pullups are needed if you directly connect a mechanical endswitch between the signal and ground pins.
 //If your axes are only moving in one direction, make sure the endstops are connected properly.
 //If your axes move in one direction ONLY when the endstops are triggered, set [XYZ]_ENDSTOP_INVERT to true here:
-//const bool X_ENDSTOP_INVERT = false;
-//const bool Y_ENDSTOP_INVERT = false;
+// const bool X_ENDSTOP_INVERT = false;
+// const bool Y_ENDSTOP_INVERT = false;
 //const bool Z_ENDSTOP_INVERT = false;
 const bool X_ENDSTOP_INVERT = true;
 const bool Y_ENDSTOP_INVERT = true;
@@ -157,7 +158,7 @@ const bool DISABLE_E = false;
 //-----------------------------------------------------------------------
 // Inverting axis direction
 //-----------------------------------------------------------------------
-const bool INVERT_X_DIR = true;
+const bool INVERT_X_DIR = false;
 const bool INVERT_Y_DIR = true;
 const bool INVERT_Z_DIR = false;
 const bool INVERT_E_DIR = false;
