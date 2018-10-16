@@ -1003,28 +1003,28 @@ void disable_e(){
 void uart_print(char * msg){
   unsigned int length = strlen(msg);
    if(length<16){
-    uart_write(uart_dev0,msg,length);
+    uart_write(uart_dev0,(unsigned char*) msg,length);
     usleep(1000);
    }  else if(length<32){
-    uart_write(uart_dev0,msg,16);
+    uart_write(uart_dev0,(unsigned char*) msg,16);
     usleep(1000);
-    uart_write(uart_dev0,msg+16,length-16);
+    uart_write(uart_dev0,(unsigned char*) msg+16,length-16);
     usleep(1000);
    } else if(length<48){
-    uart_write(uart_dev0,msg,16);
+    uart_write(uart_dev0,(unsigned char*) msg,16);
     usleep(1000);
-    uart_write(uart_dev0,msg+16,16);
+    uart_write(uart_dev0,(unsigned char*) msg+16,16);
     usleep(1000);
-    uart_write(uart_dev0,msg+32,length-32);
+    uart_write(uart_dev0,(unsigned char*) msg+32,length-32);
     usleep(1000);
    } else {
-    uart_write(uart_dev0,msg,16);
+    uart_write(uart_dev0,(unsigned char*) msg,16);
     usleep(1000);
-    uart_write(uart_dev0,msg+16,16);
+    uart_write(uart_dev0,(unsigned char*) msg+16,16);
     usleep(1000);
-    uart_write(uart_dev0,msg+32,16);
+    uart_write(uart_dev0,(unsigned char*) msg+32,16);
     usleep(1000);
-    uart_write(uart_dev0,msg+48,length-48);
+    uart_write(uart_dev0,(unsigned char*) msg+48,length-48);
     usleep(1000);
    }
 }

@@ -62,11 +62,11 @@ typedef int uart;
 
 uart uart_open_device(unsigned int device);
 uart uart_open(unsigned int tx, unsigned int rx);
-void uart_read(uart dev_id, char* read_data, unsigned int length);
-void uart_readline(uart dev_id, char* read_data);
-void uart_write(uart dev_id, char* write_data, unsigned int length);
+void uart_read(uart dev_id, unsigned char* read_data, unsigned int length);
+void uart_write(uart dev_id, unsigned char* write_data, unsigned int length);
 void uart_close(uart dev_id);
 unsigned int uart_get_num_devices(void);
+void uart_readline(uart dev_id, char* read_data);
 
 #endif
 #endif  // _UART_H_
