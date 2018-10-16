@@ -44,14 +44,25 @@ rm -rf  ./src/heater.o ./src/SeeedOLED.o ./src/arduino_zsprinter.o  ./src/heater
 ```
 ![setting2](image/setting2.png)
 
+# Commands
 ✅ M105 Get temperature
+
 ✅ M119 Get endstop status
+
 ✅ M104 S... Set nozzle temperature (heater 0)
+
 ✅ T0, T1 extruder　UV-LED head switch
+
 ✅ M700 UV LED ON
+
 ✅ M701 UV LED OFF
+
 ✅ M702 Dispenser　ON
+
 ✅ M703 Dispenser　OFF
-✅  M704 S4000 Set dispenser pressure to 400.0kPa
-✅  M712 Dump PID value
-✅  M713 Toggle cold extrusion (Enable/disable dispenser and UV-LED)
+
+✅ M704 S4000 Set dispenser pressure to 400.0kPa
+
+✅ M712 Dump PID value
+
+✅ M713 Toggle cold extrusion (Enable/disable dispenser and UV-LED)
