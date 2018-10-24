@@ -62,7 +62,7 @@
  Version 1.3.06T
  - the microcontroller can store settings in the EEPROM
  - M500 - stores paramters in EEPROM
- - M501 - reads parameters from EEPROM (if you need reset them after you changed them temporarily).
+ - M501 - reads parameters from EEPROM (if you need reset them after you change
  - M502 - reverts to the default "factory settings". You still need to store them in EEPROM afterwards if you want to.
  - M503 - Print settings
 
@@ -1003,28 +1003,28 @@ void disable_e(){
 void uart_print(char * msg){
   unsigned int length = strlen(msg);
    if(length<16){
-    uart_write(uart_dev0,(unsigned char*) msg,length);
+    uart_write(uart_dev0,msg,length);
     usleep(1000);
    }  else if(length<32){
-    uart_write(uart_dev0,(unsigned char*) msg,16);
+    uart_write(uart_dev0,msg,16);
     usleep(1000);
-    uart_write(uart_dev0,(unsigned char*) msg+16,length-16);
+    uart_write(uart_dev0,msg+16,length-16);
     usleep(1000);
    } else if(length<48){
-    uart_write(uart_dev0,(unsigned char*) msg,16);
+    uart_write(uart_dev0,msg,16);
     usleep(1000);
-    uart_write(uart_dev0,(unsigned char*) msg+16,16);
+    uart_write(uart_dev0,msg+16,16);
     usleep(1000);
-    uart_write(uart_dev0,(unsigned char*) msg+32,length-32);
+    uart_write(uart_dev0,msg+32,length-32);
     usleep(1000);
    } else {
-    uart_write(uart_dev0,(unsigned char*) msg,16);
+    uart_write(uart_dev0,msg,16);
     usleep(1000);
-    uart_write(uart_dev0,(unsigned char*) msg+16,16);
+    uart_write(uart_dev0,msg+16,16);
     usleep(1000);
-    uart_write(uart_dev0,(unsigned char*) msg+32,16);
+    uart_write(uart_dev0,msg+32,16);
     usleep(1000);
-    uart_write(uart_dev0,(unsigned char*) msg+48,length-48);
+    uart_write(uart_dev0,msg+48,length-48);
     usleep(1000);
    }
 }
@@ -1046,6 +1046,11 @@ void rs232c_write(char command_byte){
     dispenser_command_bytes[0] = command_byte; 
     XUartLite_Send(&UartLite1, (u8 *) dispenser_command_bytes, 1);
     usleep(1000);
+}
+
+void rs232c_write_nodelay(char command_byte){
+    dispenser_command_bytes[0] = command_byte; 
+    XUartLite_Send(&UartLite1, (u8 *) dispenser_command_bytes, 1);
 }
 
 void rs232c_print(char *msg){
@@ -2936,7 +2941,7 @@ void process_commands() {
         sprintf(dispenser_cmd_msg, "0EPH  CH001P%d", target_pressure);
         int string_length = strlen(dispenser_cmd_msg);
         
-        byte result = 0x00;
+        short result = 0x00;
         for (int i=0;i<string_length;i++){
         	result = result - dispenser_cmd_msg[i];
         }
@@ -2946,22 +2951,19 @@ void process_commands() {
         
         char ubyteChar[2];
         char lbyteChar[2];
-        sprintf(ubyteChar,"%x",ubyte);
-        sprintf(lbyteChar,"%x",lbyte);
+        sprintf(ubyteChar,"%X",ubyte);
+        sprintf(lbyteChar,"%X",lbyte);
 
        //uart_print("Update pressure\r\n");
        //uart_print(dispenser_cmd_msg);
        //uart_print("\r\n");
        //sprintf(temp_msg, "%lu\r\n",previous_millis_dispenser);
        //uart_print(temp_msg);
+       rs232c_write_nodelay(ENQ);
+       usleep(1000);
 
-       rs232c_write(ENQ);
-       usleep(100);
-       rs232c_write(STX); 
-       rs232c_print(dispenser_cmd_msg); //do not send null terminator
-       rs232c_write(ubyteChar[0]);
-       rs232c_write(lbyteChar[0]);
-       rs232c_write(ETX); 
+       sprintf(dispenser_cmd_msg, "%c0EPH  CH001P%d%c%c%c", STX, target_pressure,ubyteChar[0],lbyteChar[0],ETX);
+       rs232c_print(dispenser_cmd_msg); 
 
        rs232c_read(returned_message);
        //uart_print((char *)returned_message); //do not send null terminator
@@ -2972,14 +2974,13 @@ void process_commands() {
             rs232c_error = true;
           }
        }
+
        if(rs232c_error){
          //uart_print("RS232C error\r\n");
          rs232c_write(STX); 
          rs232c_print(can_string); 
          rs232c_write(ETX); 
          //dispenser_delay_time = 600;
-        //sprintf(temp_msg, "res:%d,0\r\n", millis()); 
-        ///uart_print(temp_msg);
        } else {
          rs232c_write(EOT);
          //dispenser_delay_time = 100;
