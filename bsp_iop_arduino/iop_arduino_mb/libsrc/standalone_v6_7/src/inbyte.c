@@ -1,5 +1,5 @@
 #include "xparameters.h"
-#include "xuartps_hw.h"
+#include "mailbox_io.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -10,5 +10,5 @@ char inbyte(void);
 #endif 
 
 char inbyte(void) {
-	 return XUartPs_RecvByte(STDIN_BASEADDRESS);
+	 return mailbox_inbyte(STDIN_BASEADDRESS);
 }
