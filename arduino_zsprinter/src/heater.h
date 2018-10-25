@@ -67,7 +67,6 @@ int analog2temp_max6675(int raw);
 extern int target_raw;
 extern int target_temp;
 extern int current_raw;
-extern int current_raw2;
 extern int current_raw_maxval;
 extern int current_raw_minval;
 extern int tt_maxval;

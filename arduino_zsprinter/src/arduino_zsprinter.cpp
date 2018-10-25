@@ -4735,7 +4735,7 @@ else if (e_steps > 0) {
        {
     //     WRITE(HEATER_0_PIN,LOW);
         _CLR(ck_shields_data , HTR0_PIN);
-        XGpio_DiscreteWrite(&ShieldInst, 1, shields_data);
+        XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
         //XGpio_DiscreteWrite(&HeaterInst, 1, 0x00);
        }
   }
@@ -5209,7 +5209,9 @@ else if (e_steps > 0) {
     if(_CHK(reg0,8)){
       //printf("PWM ON\r\n");
       Timer_OVF_vect();
-    } else if(_CHK(reg1,8)){
+    //} else if(_CHK(reg1,8)){
+    } 
+    if(_CHK(reg1,8)){
       //printf("PWM OFF\r\n");
       Timer_COMP_vect();
     }
@@ -5648,7 +5650,6 @@ else if (e_steps > 0) {
   
     //update current temperature
     MAILBOX_DATA_FLOAT(HOTEND_TEMP_ADDR) =  analog2temp(current_raw);
-    // MAILBOX_DATA(HOTEND_TEMP_RAW_ADDR) =  current_raw2;
     // MAILBOX_DATA_FLOAT(X_DATA_ADDR) = current_position[0];
     // MAILBOX_DATA_FLOAT(Y_DATA_ADDR) = current_position[1];
     // MAILBOX_DATA_FLOAT(Z_DATA_ADDR) = current_position[2];

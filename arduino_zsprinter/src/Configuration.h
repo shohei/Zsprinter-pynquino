@@ -388,7 +388,8 @@ const int dropsegments=5; //everything with less than this number of steps will 
 #endif
 
 // Change this value (range 30-255) to limit the current to the nozzle
-#define HEATER_CURRENT 255
+//#define HEATER_CURRENT 255
+#define HEATER_CURRENT 25 
 
 // How often should the heater check for new temp readings, in milliseconds
 #define HEATER_CHECK_INTERVAL 50
