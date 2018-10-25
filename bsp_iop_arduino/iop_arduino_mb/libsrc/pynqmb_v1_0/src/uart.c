@@ -122,15 +122,15 @@ unsigned int uart_get_num_devices(void){
 }
 
 void uart_readline(uart dev_id, char* read_data){
-    unsigned int ReceivedCount = 0;
-    while (1) {
-            ReceivedCount += XUartLite_Recv(&xuart[dev_id],
-                           read_data + ReceivedCount,
-                           1);
-            if (read_data[ReceivedCount - 1] == '\n') {
-                break;
-            }
-        }
+  unsigned int ReceivedCount = 0;
+  while(1){
+    ReceivedCount += XUartLite_Recv(&xuart[dev_id],
+                                    read_data + ReceivedCount,
+                                    1);
+    if(read_data[ReceivedCount - 1] == '\n'){
+      break;
+    }
+  }
 }
 
 #endif

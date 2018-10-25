@@ -468,7 +468,7 @@
 #define PLATFORM_MB
  
 /* Definitions for sleep timer configuration */
-#define XSLEEP_TTC_INSTANCE 0
+#define XSLEEP_TIMER_IS_DEFAULT_TIMER
  
  
 /******************************************************************/

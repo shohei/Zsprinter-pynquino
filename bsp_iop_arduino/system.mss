@@ -6,8 +6,6 @@ BEGIN OS
  PARAMETER OS_NAME = standalone
  PARAMETER OS_VER = 6.7
  PARAMETER PROC_INSTANCE = iop_arduino_mb
- PARAMETER profile_timer = iop_arduino_timers_subsystem_timer_0
- PARAMETER sleep_timer = iop_arduino_timers_subsystem_timer_0
  PARAMETER stdin = ps7_uart_0
  PARAMETER stdout = ps7_uart_0
 END
