@@ -67,6 +67,9 @@ reload:
 	make 
 	cp arduino_zsprinter.bin ~/pynq/lib/arduino
 
+update:
+	make mrproper && make && cp arduino_zsprinter.bin ~/pynq/lib/arduino
+
 secondary-outputs: $(ELFSIZE) arduino_zsprinter.bin
 
 .PHONY: all clean dependents
