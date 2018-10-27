@@ -77,7 +77,7 @@ void init()
 
 //	xil_printf("wiring.c init() - exit\n\r");
   Status;
-  Status = XTmrCtr_Initialize(&TimerCounterInst, XPAR_TMRCTR_5_DEVICE_ID);
+  Status = XTmrCtr_Initialize(&TimerCounterInst, XPAR_IOP_ARDUINO_TIMERS_SUBSYSTEM_TIMER_5_DEVICE_ID);
   if (Status != XST_SUCCESS) {
     printf("Timer Initialize Error\n\r");
         return XST_FAILURE;

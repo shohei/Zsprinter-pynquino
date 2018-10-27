@@ -9,17 +9,14 @@ LD_SRCS += \
 C_SRCS += \
 ../src/heater.cpp \
 ../src/arduino_zsprinter.cpp
-# ../src/SeeedOLED.cpp \
 
 OBJS += \
 ./src/heater.o \
 ./src/arduino_zsprinter.o 
-# ./src/SeeedOLED.o \
 
 C_DEPS += \
 ./src/heater.d \
 ./src/arduino_zsprinter.d 
-# ./src/SeeedOLED.d \
 
 
 # Each subdirectory must supply rules for building sources it contributes

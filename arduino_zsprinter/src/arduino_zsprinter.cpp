@@ -166,9 +166,6 @@
 #include "xsysmon.h"
 #include "xintc.h"
 
-//#include "xparameters.h"
-//#include "xil_io.h"
-//#include "SeeedOLED.h"
 #include "circular_buffer.h"
 #include "timer.h"
 #include "gpio.h"
@@ -265,6 +262,7 @@ static XTmrCtr TimerInstancePtr2;
 static XTmrCtr TimerInstancePtr3;
 static XTmrCtr TimerInstancePtr4;
 static XTmrCtr TimerInstancePtr5;
+static XTmrCtr TimerInstancePtr6;
 
 #define SYSMON_DEVICE_ID XPAR_SYSMON_0_DEVICE_ID //ID of xadc_wiz_0
 #define XSysMon_RawToExtVoltage(AdcData) ((((float)(AdcData))*(1.0f))/65536.0f) //(ADC 16bit result)/16/4096 = (ADC 16bit result)/65536
@@ -564,6 +562,7 @@ unsigned long stepper_inactive_time = 0;
 unsigned char manage_monitor = 255;
 //heater pwm value
 extern volatile unsigned char g_heater_pwm_val;
+extern volatile unsigned char g_heater_pwm_val2;
 
 static block_t block_buffer[BLOCK_BUFFER_SIZE]; // A ring buffer for motion instructions
 static volatile unsigned char block_buffer_head; // Index of the next block to be pushed
@@ -681,6 +680,7 @@ void initsd()
 
 #ifdef PIDTEMP
 extern volatile unsigned char g_heater_pwm_val;
+extern volatile unsigned char g_heater_pwm_val2;
 #endif
 
 void fast_xfer()
@@ -694,6 +694,7 @@ void fast_xfer()
 
 #ifdef PIDTEMP
   g_heater_pwm_val = 0;
+  g_heater_pwm_val2 = 0;
 #endif
 
   lastxferchar = 1;
@@ -2293,9 +2294,9 @@ void process_commands() {
 #endif
       break;
     case 140: // M140 set bed temp
-#ifdef CHAIN_OF_COMMAND
-      st_synchronize(); // wait for all movements to finish
-#endif
+//#ifdef CHAIN_OF_COMMAND
+//      st_synchronize(); // wait for all movements to finish
+//#endif
 #if TEMP_1_PIN > -1 || defined BED_USES_AD595
       if (code_seen('S'))
         target_bed_raw = temp2analogBed(code_value());
@@ -2322,13 +2323,12 @@ void process_commands() {
       //printf("current_raw:%d\r\n",current_raw);
       // printf("ok T:%d",hotendtC);
 
-      sprintf(temp_msg, "ok T:%d\r\n",hotendtC);
+      sprintf(temp_msg, "ok T:%d",hotendtC);
       uart_print(temp_msg);
       
       MAILBOX_DATA_FLOAT(HOTEND_TEMP_ADDR) = hotendtC;
       clear_to_send = true;
       MAILBOX_CMD_ADDR = 0x0;
-      return;
 #ifdef PIDTEMP
       //showString(PSTR(" @:"));
       //Serial.print(heater_duty);
@@ -2348,10 +2348,13 @@ void process_commands() {
 #endif
 #endif
 #if TEMP_1_PIN > -1 || defined BED_USES_AD595
+      sprintf(temp_msg, " B:%d\r\n",bedtempC);
+      uart_print(temp_msg);
       // printf(" B:%d\r\n",bedtempC);
       //showString(PSTR(" B:"));
       //Serial.println(bedtempC);
 #else
+      uart_print("\r\n");
       // printf("\r\n");
       //Serial.println();
 #endif
@@ -2432,9 +2435,9 @@ void process_commands() {
       break;
     */ 
     case 190: // M190 - Wait for bed heater to reach target temperature.
-#ifdef CHAIN_OF_COMMAND
-      st_synchronize(); // wait for all movements to finish
-#endif
+//#ifdef CHAIN_OF_COMMAND
+//      st_synchronize(); // wait for all movements to finish
+//#endif
 #if TEMP_1_PIN > -1
       if (code_seen('S'))
         target_bed_raw = temp2analogBed(code_value());
@@ -2443,9 +2446,12 @@ void process_commands() {
         if ((millis() - codenum) > 1000) //Print Temp Reading every 1 second while heating up.
         {
           hotendtC = analog2temp(current_raw);
+          bedtempC = analog2tempBed(current_bed_raw);
           //showString(PSTR("T:"));
           //Serial.print(hotendtC);
           //showString(PSTR(" B:"));
+          sprintf(temp_msg,"T:%d B:%d\r\n",hotendtC,bedtempC);
+          uart_print(temp_msg);
           // printf("T:%d B:%d\r\n",hotendtC,analog2tempBed(current_bed_raw));
           //Serial.println( analog2tempBed(current_bed_raw) );
           codenum = millis();
@@ -4740,6 +4746,48 @@ else if (e_steps > 0) {
        }
   }
 
+  void Timer_OVF_vect2(){
+  #ifdef PID_SOFT_PWM
+    if(g_heater_pwm_val2 >= 2)
+    {
+      _SET(ck_shields_data , HTR1_PIN);
+      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+      if(g_heater_pwm_val2 <= 253){
+        XTmrCtr_SetResetValue(&TimerInstancePtr6,
+            1, //Change with generic value
+            PULSES_500HZ*g_heater_pwm_val2/256);
+      }else{
+        //        OCR2A = 192;
+        XTmrCtr_SetResetValue(&TimerInstancePtr6,
+            1, //Change with generic value
+            PULSES_500HZ*192/256);
+      }
+    }
+    else
+    {
+      _CLR(ck_shields_data , HTR1_PIN);
+      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+      XTmrCtr_SetResetValue(&TimerInstancePtr6,
+          1, //Change with generic value
+          PULSES_500HZ*192/256);
+    }
+#endif
+  }
+
+  void Timer_COMP_vect2(){
+    if(g_heater_pwm_val2 > 253)
+       {
+      _SET(ck_shields_data , HTR1_PIN);
+      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+       }
+       else
+       {
+        _CLR(ck_shields_data , HTR1_PIN);
+        XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+       }
+  }
+
+
 //  XScuGic InterruptController; /* Instance of the Interrupt Controller */
 //  static XScuGic_Config *GicConfig;/* The configuration parameters of the controller */
   XIntc IntcInstancePtr;
@@ -5664,7 +5712,7 @@ else if (e_steps > 0) {
   // Handler for dispenser and UV LED control
   // 1Hz 
   void Timer_InterruptHandler4(void *data, u8 TmrCtrNumber){
-    if(!cold_extrusion){
+	  if(!cold_extrusion){
       if(last_dispenser_pressure != current_dispenser_pressure){
       	if(use_dispenser){
           update_dispenser_pressure(1, current_dispenser_pressure);
@@ -5702,6 +5750,19 @@ else if (e_steps > 0) {
      }
   }
 
+  void Timer_InterruptHandler6(void *data, u8 TmrCtrNumber){
+	    //500Hz cycle; this is used for the heater management
+	    //xil_printf("Interrupt acknowledged.\r\n");
+	    u32 reg0 = Xil_In32(TimerInstancePtr6.BaseAddress + XTmrCtr_Offsets[0] + XTC_TCSR_OFFSET);
+	    u32 reg1 = Xil_In32(TimerInstancePtr6.BaseAddress + XTmrCtr_Offsets[1] + XTC_TCSR_OFFSET);
+	    if(_CHK(reg0,8)){
+	      //printf("PWM ON\r\n");
+	      Timer_OVF_vect2();
+	    } else if(_CHK(reg1,8)){
+	      //printf("PWM OFF\r\n");
+	      Timer_COMP_vect2();
+	    }
+  }
 
   void initSteppers(){
     //no use of enable pin
@@ -5780,7 +5841,7 @@ else if (e_steps > 0) {
     //**************************************************************************//
     // Timer1 init (Stepper motor pulse generation)
     //**************************************************************************//
-    int xStatus = XTmrCtr_Initialize(&TimerInstancePtr,XPAR_TMRCTR_0_DEVICE_ID);
+    int xStatus = XTmrCtr_Initialize(&TimerInstancePtr,XPAR_IOP_ARDUINO_TIMERS_SUBSYSTEM_TIMER_0_DEVICE_ID);
     if(XST_SUCCESS != xStatus){
       // print("TIMER INIT FAILED \n\r");
       // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr1 ng");
@@ -5804,7 +5865,7 @@ else if (e_steps > 0) {
     //**************************************************************************//
     // Timer2 init (Heater PWM control)
     //**************************************************************************//
-    xStatus = XTmrCtr_Initialize(&TimerInstancePtr2,XPAR_TMRCTR_1_DEVICE_ID);
+    xStatus = XTmrCtr_Initialize(&TimerInstancePtr2,XPAR_IOP_ARDUINO_TIMERS_SUBSYSTEM_TIMER_1_DEVICE_ID);
     if(XST_SUCCESS != xStatus){
       // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr2 ng");
       // print("TIMER INIT2 FAILED \n\r");
@@ -5842,7 +5903,7 @@ else if (e_steps > 0) {
     // Timer3 init (Command parser: Quasi main loop)
     //**************************************************************************//
 
-    xStatus = XTmrCtr_Initialize(&TimerInstancePtr3,XPAR_TMRCTR_2_DEVICE_ID);
+    xStatus = XTmrCtr_Initialize(&TimerInstancePtr3,XPAR_IOP_ARDUINO_TIMERS_SUBSYSTEM_TIMER_2_DEVICE_ID);
     if(XST_SUCCESS != xStatus){
       // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr3 ng");
       // print("TIMER3 INIT FAILED \n\r");
@@ -5869,7 +5930,7 @@ else if (e_steps > 0) {
     // Timer4 (Diepenser and UV LED control)
     //**************************************************************************//
 
-     xStatus = XTmrCtr_Initialize(&TimerInstancePtr4,XPAR_TMRCTR_3_DEVICE_ID);
+     xStatus = XTmrCtr_Initialize(&TimerInstancePtr4,XPAR_IOP_ARDUINO_TIMERS_SUBSYSTEM_TIMER_3_DEVICE_ID);
      if(XST_SUCCESS != xStatus){
     // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr4 ng");
     // print("TIMER3 INIT FAILED \n\r");
@@ -5894,7 +5955,7 @@ else if (e_steps > 0) {
     // Timer5 (BRAM communication)
     //**************************************************************************//
 
-     xStatus = XTmrCtr_Initialize(&TimerInstancePtr5,XPAR_TMRCTR_4_DEVICE_ID);
+     xStatus = XTmrCtr_Initialize(&TimerInstancePtr5,XPAR_IOP_ARDUINO_TIMERS_SUBSYSTEM_TIMER_4_DEVICE_ID);
      if(XST_SUCCESS != xStatus){
     // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr4 ng");
     // print("TIMER3 INIT FAILED \n\r");
@@ -5915,75 +5976,108 @@ else if (e_steps > 0) {
          0, //Channel 0
          (XTC_INT_MODE_OPTION | XTC_AUTO_RELOAD_OPTION | XTC_DOWN_COUNT_OPTION));//Timer5 is DOWN counter
 
+     //**************************************************************************//
+     // Timer6 (Heatbed PWM generation)
+     //**************************************************************************//
+     xStatus = XTmrCtr_Initialize(&TimerInstancePtr6,XPAR_IOP_ARDUINO_AXI_TIMER_0_DEVICE_ID);
+     if(XST_SUCCESS != xStatus){
+    // print("TIMER3 INIT FAILED \n\r");
+    	 uart_print("Timer6 init failed\r\n");
+     }
+
+     XTmrCtr_SetHandler(&TimerInstancePtr6,
+         Timer_InterruptHandler6,
+         &TimerInstancePtr6);
+
+     //enable interrupt & auto reload
+     XTmrCtr_SetOptions(&TimerInstancePtr6,
+         0,
+         (XTC_INT_MODE_OPTION | XTC_AUTO_RELOAD_OPTION | XTC_DOWN_COUNT_OPTION));
+
+     CounterControlReg = Xil_In32(TimerInstancePtr6.BaseAddress + XTmrCtr_Offsets[0] + XTC_TCSR_OFFSET);
+     CounterControlReg = CounterControlReg | XTC_CSR_ENABLE_PWM_MASK | XTC_CSR_EXT_GENERATE_MASK;
+     Xil_Out32(TimerInstancePtr6.BaseAddress + XTmrCtr_Offsets[0] + XTC_TCSR_OFFSET, CounterControlReg);
+
+     XTmrCtr_SetOptions(&TimerInstancePtr6,
+         1,
+         (XTC_INT_MODE_OPTION | XTC_AUTO_RELOAD_OPTION | XTC_DOWN_COUNT_OPTION));
+
+     CounterControlReg = Xil_In32(TimerInstancePtr6.BaseAddress + XTmrCtr_Offsets[1] + XTC_TCSR_OFFSET);
+     CounterControlReg = CounterControlReg | XTC_CSR_ENABLE_PWM_MASK | XTC_CSR_EXT_GENERATE_MASK;
+     Xil_Out32(TimerInstancePtr6.BaseAddress + XTmrCtr_Offsets[1] + XTC_TCSR_OFFSET, CounterControlReg);
+
+     XTmrCtr_SetResetValue(&TimerInstancePtr6,
+         0, //Channel 0
+         0x30d40);//500Hz
+     XTmrCtr_SetResetValue(&TimerInstancePtr6,
+         1, //Channel 1
+         0x0);
+
     //**************************************************************************//
     // Connect INTC and Timers 
     //**************************************************************************//
 
     xStatus = XIntc_Initialize(&IntcInstancePtr, XPAR_INTC_0_DEVICE_ID);
     if (xStatus != XST_SUCCESS){
-      // SeeedOled.setTextXY(0,0);SeeedOled.putString("initc");
       // print("intc init error\n\r");
     }
 
-    xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_0_VEC_ID,
+    xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_IOP_ARDUINO_INTC_IOP_ARDUINO_TIMERS_SUBSYSTEM_TIMER_0_INTERRUPT_INTR,
         (XInterruptHandler)XTmrCtr_InterruptHandler,
         (void*)&TimerInstancePtr);
     if (xStatus != XST_SUCCESS){
-      // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr0c");
       // print("connect timer0 error\n\r");
     }
-    xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_1_VEC_ID,
+    xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_IOP_ARDUINO_INTC_IOP_ARDUINO_TIMERS_SUBSYSTEM_TIMER_1_INTERRUPT_INTR,
         (XInterruptHandler)XTmrCtr_InterruptHandler,
         (void*)&TimerInstancePtr2);
     if (xStatus != XST_SUCCESS){
-      // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr1c");
       // print("connect timer1 error\n\r");
     }
-    xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_2_VEC_ID,
+    xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_IOP_ARDUINO_INTC_IOP_ARDUINO_TIMERS_SUBSYSTEM_TIMER_2_INTERRUPT_INTR,
         (XInterruptHandler)XTmrCtr_InterruptHandler,
         (void*)&TimerInstancePtr3);
-    if (xStatus != XST_SUCCESS){
-      // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr3c");
-      // print("connect timer3 error\n\r");
+    if (xStatus != XST_SUCCESS){      // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr3c");
+      // print("connect timer2 error\n\r");
     }
-     xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_3_VEC_ID,
+     xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_IOP_ARDUINO_INTC_IOP_ARDUINO_TIMERS_SUBSYSTEM_TIMER_3_INTERRUPT_INTR,
          (XInterruptHandler)XTmrCtr_InterruptHandler,
          (void*)&TimerInstancePtr4);
      if (xStatus != XST_SUCCESS){
-       // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr4c");
        // print("connect timer3 error\n\r");
      }
-     xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_4_VEC_ID,
+     xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_IOP_ARDUINO_INTC_IOP_ARDUINO_TIMERS_SUBSYSTEM_TIMER_4_INTERRUPT_INTR,
          (XInterruptHandler)XTmrCtr_InterruptHandler,
          (void*)&TimerInstancePtr5);
      if (xStatus != XST_SUCCESS){
-       // SeeedOled.setTextXY(0,0);SeeedOled.putString("tmr4c");
-       // print("connect timer3 error\n\r");
+       // print("connect timer4 error\n\r");
+     }
+     xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_IOP_ARDUINO_INTC_IOP_ARDUINO_AXI_TIMER_0_INTERRUPT_INTR,
+         (XInterruptHandler)XTmrCtr_InterruptHandler,
+         (void*)&TimerInstancePtr6);
+     if (xStatus != XST_SUCCESS){
+       // print("connect timer5 error\n\r");
      }
     xStatus = XIntc_Start(&IntcInstancePtr, XIN_REAL_MODE);
     if (xStatus != XST_SUCCESS){
-      // SeeedOled.setTextXY(0,0);SeeedOled.putString("intc");
       // print("intc start error\n\r");
     }
-    XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_0_VEC_ID);
-    XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_1_VEC_ID);
-    XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_2_VEC_ID);
-    XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_3_VEC_ID);
-    XIntc_Enable(&IntcInstancePtr, XPAR_INTC_0_TMRCTR_4_VEC_ID);
+    XIntc_Enable(&IntcInstancePtr, XPAR_IOP_ARDUINO_INTC_IOP_ARDUINO_TIMERS_SUBSYSTEM_TIMER_0_INTERRUPT_INTR);
+    XIntc_Enable(&IntcInstancePtr, XPAR_IOP_ARDUINO_INTC_IOP_ARDUINO_TIMERS_SUBSYSTEM_TIMER_1_INTERRUPT_INTR);
+    XIntc_Enable(&IntcInstancePtr, XPAR_IOP_ARDUINO_INTC_IOP_ARDUINO_TIMERS_SUBSYSTEM_TIMER_2_INTERRUPT_INTR);
+    XIntc_Enable(&IntcInstancePtr, XPAR_IOP_ARDUINO_INTC_IOP_ARDUINO_TIMERS_SUBSYSTEM_TIMER_3_INTERRUPT_INTR);
+    XIntc_Enable(&IntcInstancePtr, XPAR_IOP_ARDUINO_INTC_IOP_ARDUINO_TIMERS_SUBSYSTEM_TIMER_4_INTERRUPT_INTR);
+    XIntc_Enable(&IntcInstancePtr, XPAR_IOP_ARDUINO_INTC_IOP_ARDUINO_AXI_TIMER_0_INTERRUPT_INTR);
     microblaze_enable_interrupts();
 
     XTmrCtr_Start(&TimerInstancePtr,0);
-    // print("AXI timer1 start \n\r");
     XTmrCtr_Start(&TimerInstancePtr2,0);
-    // print("AXI timer2 - timer0 start \n\r");
     XTmrCtr_Start(&TimerInstancePtr2,1);
-    // print("AXI timer2 - timer1 start \n\r");
     XTmrCtr_Start(&TimerInstancePtr3,0);
-    // print("AXI timer3 start \n\r");
     XTmrCtr_Start(&TimerInstancePtr4,0);
-    // print("AXI timer4 start \n\r");
     XTmrCtr_Start(&TimerInstancePtr5,0);
-    // print("AXI timer5 start \n\r");
+    XTmrCtr_Start(&TimerInstancePtr6,0);
+    XTmrCtr_Start(&TimerInstancePtr6,1);
   }
 
   void st_init() {

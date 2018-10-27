@@ -133,6 +133,7 @@ xilinx.com:ip:processing_system7:5.5\
 xilinx.com:ip:proc_sys_reset:5.0\
 xilinx.com:user:interface_slice:1.0\
 xilinx.com:ip:axi_intc:4.1\
+xilinx.com:ip:axi_timer:2.0\
 xilinx.com:ip:axi_uartlite:2.0\
 xilinx.com:user:dff_en_reset_vector:1.0\
 xilinx.com:user:io_switch:1.1\
@@ -141,7 +142,6 @@ xilinx.com:ip:axi_bram_ctrl:4.0\
 xilinx.com:ip:xadc_wiz:3.3\
 xilinx.com:ip:axi_iic:2.0\
 xilinx.com:ip:axi_quad_spi:3.2\
-xilinx.com:ip:axi_timer:2.0\
 xilinx.com:ip:axi_dma:7.1\
 xilinx.com:ip:axis_data_fifo:1.1\
 xilinx.com:hls:trace_cntrl_64:1.4\
@@ -2061,6 +2061,15 @@ proc create_hier_cell_iop_arduino { parentCell nameHier } {
   create_bd_pin -dir O -from 0 -to 0 -type rst peripheral_aresetn
   create_bd_pin -dir I -from 0 -to 0 -type rst s_axi_aresetn
 
+  # Create instance: axi_timer_0, and set properties
+  set axi_timer_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_timer:2.0 axi_timer_0 ]
+
+  # Create instance: axi_timer_1, and set properties
+  set axi_timer_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_timer:2.0 axi_timer_1 ]
+
+  # Create instance: axi_timer_2, and set properties
+  set axi_timer_2 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_timer:2.0 axi_timer_2 ]
+
   # Create instance: axi_uartlite_0, and set properties
   set axi_uartlite_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_uartlite:2.0 axi_uartlite_0 ]
   set_property -dict [ list \
@@ -2093,7 +2102,7 @@ proc create_hier_cell_iop_arduino { parentCell nameHier } {
   set intr_concat [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconcat:2.1 intr_concat ]
   set_property -dict [ list \
    CONFIG.IN2_WIDTH {1} \
-   CONFIG.NUM_PORTS {7} \
+   CONFIG.NUM_PORTS {10} \
  ] $intr_concat
 
   # Create instance: io_switch_0, and set properties
@@ -2153,7 +2162,8 @@ proc create_hier_cell_iop_arduino { parentCell nameHier } {
    CONFIG.M15_HAS_REGSLICE {1} \
    CONFIG.M16_HAS_REGSLICE {1} \
    CONFIG.M17_HAS_REGSLICE {1} \
-   CONFIG.NUM_MI {18} \
+   CONFIG.M18_HAS_REGSLICE {1} \
+   CONFIG.NUM_MI {21} \
    CONFIG.S00_HAS_REGSLICE {1} \
  ] $microblaze_0_axi_periph
 
@@ -2258,6 +2268,9 @@ proc create_hier_cell_iop_arduino { parentCell nameHier } {
   connect_bd_intf_net -intf_net microblaze_0_axi_periph_M15_AXI [get_bd_intf_pins microblaze_0_axi_periph/M15_AXI] [get_bd_intf_pins xadc/s_axi_lite]
   connect_bd_intf_net -intf_net microblaze_0_axi_periph_M16_AXI [get_bd_intf_pins microblaze_0_axi_periph/M16_AXI] [get_bd_intf_pins timers_subsystem/S05_AXILite]
   connect_bd_intf_net -intf_net microblaze_0_axi_periph_M17_AXI [get_bd_intf_pins axi_uartlite_0/S_AXI] [get_bd_intf_pins microblaze_0_axi_periph/M17_AXI]
+  connect_bd_intf_net -intf_net microblaze_0_axi_periph_M18_AXI [get_bd_intf_pins axi_timer_0/S_AXI] [get_bd_intf_pins microblaze_0_axi_periph/M18_AXI]
+  connect_bd_intf_net -intf_net microblaze_0_axi_periph_M19_AXI [get_bd_intf_pins axi_timer_1/S_AXI] [get_bd_intf_pins microblaze_0_axi_periph/M19_AXI]
+  connect_bd_intf_net -intf_net microblaze_0_axi_periph_M20_AXI [get_bd_intf_pins axi_timer_2/S_AXI] [get_bd_intf_pins microblaze_0_axi_periph/M20_AXI]
   connect_bd_intf_net -intf_net microblaze_0_debug [get_bd_intf_pins DEBUG] [get_bd_intf_pins mb/DEBUG]
   connect_bd_intf_net -intf_net microblaze_0_dlmb_1 [get_bd_intf_pins lmb/DLMB] [get_bd_intf_pins mb/DLMB]
   connect_bd_intf_net -intf_net microblaze_0_ilmb_1 [get_bd_intf_pins lmb/ILMB] [get_bd_intf_pins mb/ILMB]
@@ -2265,6 +2278,9 @@ proc create_hier_cell_iop_arduino { parentCell nameHier } {
   connect_bd_intf_net -intf_net uartlite_UART [get_bd_intf_pins io_switch_0/uart0] [get_bd_intf_pins uartlite/UART]
 
   # Create port connections
+  connect_bd_net -net axi_timer_0_interrupt [get_bd_pins axi_timer_0/interrupt] [get_bd_pins intr_concat/In7]
+  connect_bd_net -net axi_timer_1_interrupt [get_bd_pins axi_timer_1/interrupt] [get_bd_pins intr_concat/In8]
+  connect_bd_net -net axi_timer_2_interrupt [get_bd_pins axi_timer_2/interrupt] [get_bd_pins intr_concat/In9]
   connect_bd_net -net axi_uartlite_0_interrupt [get_bd_pins axi_uartlite_0/interrupt] [get_bd_pins intr_concat/In6]
   connect_bd_net -net capture_i_1 [get_bd_pins io_switch_0/timer_i] [get_bd_pins timers_subsystem/capture_i]
   connect_bd_net -net dff_en_reset_vector_0_q [get_bd_pins intr_req] [get_bd_pins dff_en_reset_vector_0/q]
@@ -2282,12 +2298,12 @@ proc create_hier_cell_iop_arduino { parentCell nameHier } {
   connect_bd_net -net mb3_uartlite_d1_d0_interrupt [get_bd_pins intr_concat/In4] [get_bd_pins uartlite/interrupt]
   connect_bd_net -net mb_1_reset_Dout [get_bd_pins aux_reset_in] [get_bd_pins rst_clk_wiz_1_100M/aux_reset_in]
   connect_bd_net -net mdm_1_debug_sys_rst [get_bd_pins mb_debug_sys_rst] [get_bd_pins rst_clk_wiz_1_100M/mb_debug_sys_rst]
-  connect_bd_net -net ps7_0_FCLK_CLK0 [get_bd_pins clk_100M] [get_bd_pins axi_uartlite_0/s_axi_aclk] [get_bd_pins dff_en_reset_vector_0/clk] [get_bd_pins gpio_subsystem/s_axi_aclk] [get_bd_pins iic_subsystem/s_axi_aclk] [get_bd_pins intc/s_axi_aclk] [get_bd_pins intr/s_axi_aclk] [get_bd_pins io_switch_0/s_axi_aclk] [get_bd_pins lmb/LMB_Clk] [get_bd_pins mb/Clk] [get_bd_pins mb_bram_ctrl/s_axi_aclk] [get_bd_pins microblaze_0_axi_periph/ACLK] [get_bd_pins microblaze_0_axi_periph/M00_ACLK] [get_bd_pins microblaze_0_axi_periph/M01_ACLK] [get_bd_pins microblaze_0_axi_periph/M02_ACLK] [get_bd_pins microblaze_0_axi_periph/M03_ACLK] [get_bd_pins microblaze_0_axi_periph/M04_ACLK] [get_bd_pins microblaze_0_axi_periph/M05_ACLK] [get_bd_pins microblaze_0_axi_periph/M06_ACLK] [get_bd_pins microblaze_0_axi_periph/M07_ACLK] [get_bd_pins microblaze_0_axi_periph/M08_ACLK] [get_bd_pins microblaze_0_axi_periph/M09_ACLK] [get_bd_pins microblaze_0_axi_periph/M10_ACLK] [get_bd_pins microblaze_0_axi_periph/M11_ACLK] [get_bd_pins microblaze_0_axi_periph/M12_ACLK] [get_bd_pins microblaze_0_axi_periph/M13_ACLK] [get_bd_pins microblaze_0_axi_periph/M14_ACLK] [get_bd_pins microblaze_0_axi_periph/M15_ACLK] [get_bd_pins microblaze_0_axi_periph/M16_ACLK] [get_bd_pins microblaze_0_axi_periph/M17_ACLK] [get_bd_pins microblaze_0_axi_periph/S00_ACLK] [get_bd_pins rst_clk_wiz_1_100M/slowest_sync_clk] [get_bd_pins spi_subsystem/s_axi_aclk] [get_bd_pins timers_subsystem/s_axi_aclk] [get_bd_pins uartlite/s_axi_aclk] [get_bd_pins xadc/s_axi_aclk]
+  connect_bd_net -net ps7_0_FCLK_CLK0 [get_bd_pins clk_100M] [get_bd_pins axi_timer_0/s_axi_aclk] [get_bd_pins axi_timer_1/s_axi_aclk] [get_bd_pins axi_timer_2/s_axi_aclk] [get_bd_pins axi_uartlite_0/s_axi_aclk] [get_bd_pins dff_en_reset_vector_0/clk] [get_bd_pins gpio_subsystem/s_axi_aclk] [get_bd_pins iic_subsystem/s_axi_aclk] [get_bd_pins intc/s_axi_aclk] [get_bd_pins intr/s_axi_aclk] [get_bd_pins io_switch_0/s_axi_aclk] [get_bd_pins lmb/LMB_Clk] [get_bd_pins mb/Clk] [get_bd_pins mb_bram_ctrl/s_axi_aclk] [get_bd_pins microblaze_0_axi_periph/ACLK] [get_bd_pins microblaze_0_axi_periph/M00_ACLK] [get_bd_pins microblaze_0_axi_periph/M01_ACLK] [get_bd_pins microblaze_0_axi_periph/M02_ACLK] [get_bd_pins microblaze_0_axi_periph/M03_ACLK] [get_bd_pins microblaze_0_axi_periph/M04_ACLK] [get_bd_pins microblaze_0_axi_periph/M05_ACLK] [get_bd_pins microblaze_0_axi_periph/M06_ACLK] [get_bd_pins microblaze_0_axi_periph/M07_ACLK] [get_bd_pins microblaze_0_axi_periph/M08_ACLK] [get_bd_pins microblaze_0_axi_periph/M09_ACLK] [get_bd_pins microblaze_0_axi_periph/M10_ACLK] [get_bd_pins microblaze_0_axi_periph/M11_ACLK] [get_bd_pins microblaze_0_axi_periph/M12_ACLK] [get_bd_pins microblaze_0_axi_periph/M13_ACLK] [get_bd_pins microblaze_0_axi_periph/M14_ACLK] [get_bd_pins microblaze_0_axi_periph/M15_ACLK] [get_bd_pins microblaze_0_axi_periph/M16_ACLK] [get_bd_pins microblaze_0_axi_periph/M17_ACLK] [get_bd_pins microblaze_0_axi_periph/M18_ACLK] [get_bd_pins microblaze_0_axi_periph/M19_ACLK] [get_bd_pins microblaze_0_axi_periph/M20_ACLK] [get_bd_pins microblaze_0_axi_periph/S00_ACLK] [get_bd_pins rst_clk_wiz_1_100M/slowest_sync_clk] [get_bd_pins spi_subsystem/s_axi_aclk] [get_bd_pins timers_subsystem/s_axi_aclk] [get_bd_pins uartlite/s_axi_aclk] [get_bd_pins xadc/s_axi_aclk]
   connect_bd_net -net rst_clk_wiz_1_100M_bus_struct_reset [get_bd_pins lmb/SYS_Rst] [get_bd_pins rst_clk_wiz_1_100M/bus_struct_reset]
   connect_bd_net -net rst_clk_wiz_1_100M_interconnect_aresetn [get_bd_pins microblaze_0_axi_periph/ARESETN] [get_bd_pins rst_clk_wiz_1_100M/interconnect_aresetn]
   connect_bd_net -net rst_clk_wiz_1_100M_mb_reset [get_bd_pins mb/Reset] [get_bd_pins rst_clk_wiz_1_100M/mb_reset]
   connect_bd_net -net rst_clk_wiz_1_100M_peripheral_aresetn [get_bd_pins peripheral_aresetn] [get_bd_pins gpio_subsystem/s_axi_aresetn] [get_bd_pins iic_subsystem/s_axi_aresetn1] [get_bd_pins intc/s_axi_aresetn] [get_bd_pins io_switch_0/s_axi_aresetn] [get_bd_pins microblaze_0_axi_periph/M00_ARESETN] [get_bd_pins microblaze_0_axi_periph/M01_ARESETN] [get_bd_pins microblaze_0_axi_periph/M02_ARESETN] [get_bd_pins microblaze_0_axi_periph/M03_ARESETN] [get_bd_pins microblaze_0_axi_periph/M04_ARESETN] [get_bd_pins microblaze_0_axi_periph/M05_ARESETN] [get_bd_pins microblaze_0_axi_periph/M06_ARESETN] [get_bd_pins microblaze_0_axi_periph/M07_ARESETN] [get_bd_pins microblaze_0_axi_periph/M10_ARESETN] [get_bd_pins microblaze_0_axi_periph/M11_ARESETN] [get_bd_pins microblaze_0_axi_periph/M12_ARESETN] [get_bd_pins microblaze_0_axi_periph/M13_ARESETN] [get_bd_pins microblaze_0_axi_periph/M15_ARESETN] [get_bd_pins microblaze_0_axi_periph/S00_ARESETN] [get_bd_pins rst_clk_wiz_1_100M/peripheral_aresetn] [get_bd_pins spi_subsystem/s_axi_aresetn] [get_bd_pins timers_subsystem/s_axi_aresetn]
-  connect_bd_net -net s_axi_aresetn_1 [get_bd_pins s_axi_aresetn] [get_bd_pins axi_uartlite_0/s_axi_aresetn] [get_bd_pins intr/s_axi_aresetn] [get_bd_pins mb_bram_ctrl/s_axi_aresetn] [get_bd_pins microblaze_0_axi_periph/M08_ARESETN] [get_bd_pins microblaze_0_axi_periph/M09_ARESETN] [get_bd_pins microblaze_0_axi_periph/M14_ARESETN] [get_bd_pins microblaze_0_axi_periph/M16_ARESETN] [get_bd_pins microblaze_0_axi_periph/M17_ARESETN] [get_bd_pins spi_subsystem/s_axi_aresetn1] [get_bd_pins uartlite/s_axi_aresetn] [get_bd_pins xadc/s_axi_aresetn]
+  connect_bd_net -net s_axi_aresetn_1 [get_bd_pins s_axi_aresetn] [get_bd_pins axi_timer_0/s_axi_aresetn] [get_bd_pins axi_timer_1/s_axi_aresetn] [get_bd_pins axi_timer_2/s_axi_aresetn] [get_bd_pins axi_uartlite_0/s_axi_aresetn] [get_bd_pins intr/s_axi_aresetn] [get_bd_pins mb_bram_ctrl/s_axi_aresetn] [get_bd_pins microblaze_0_axi_periph/M08_ARESETN] [get_bd_pins microblaze_0_axi_periph/M09_ARESETN] [get_bd_pins microblaze_0_axi_periph/M14_ARESETN] [get_bd_pins microblaze_0_axi_periph/M16_ARESETN] [get_bd_pins microblaze_0_axi_periph/M17_ARESETN] [get_bd_pins microblaze_0_axi_periph/M18_ARESETN] [get_bd_pins microblaze_0_axi_periph/M19_ARESETN] [get_bd_pins microblaze_0_axi_periph/M20_ARESETN] [get_bd_pins spi_subsystem/s_axi_aresetn1] [get_bd_pins uartlite/s_axi_aresetn] [get_bd_pins xadc/s_axi_aresetn]
 
   # Restore current instance
   current_bd_instance $oldCurInst
@@ -3616,6 +3632,9 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets iop_pmoda_pmoda_gpio] [get_bd_in
   create_bd_addr_seg -range 0x00010000 -offset 0x83C00000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs trace_analyzer_arduino/trace_cntrl_64_0/s_axi_trace_cntrl/Reg] SEG_trace_cntrl_64_0_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x43C30000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs video/hdmi_in/frontend/vtc_in/ctrl/Reg] SEG_vtc_in_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x43C20000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs video/hdmi_out/frontend/vtc_out/ctrl/Reg] SEG_vtc_out_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x41C60000 [get_bd_addr_spaces iop_arduino/mb/Data] [get_bd_addr_segs iop_arduino/axi_timer_0/S_AXI/Reg] SEG_axi_timer_0_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x41C70000 [get_bd_addr_spaces iop_arduino/mb/Data] [get_bd_addr_segs iop_arduino/axi_timer_1/S_AXI/Reg] SEG_axi_timer_1_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x41C80000 [get_bd_addr_spaces iop_arduino/mb/Data] [get_bd_addr_segs iop_arduino/axi_timer_2/S_AXI/Reg] SEG_axi_timer_2_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x40610000 [get_bd_addr_spaces iop_arduino/mb/Data] [get_bd_addr_segs iop_arduino/axi_uartlite_0/S_AXI/Reg] SEG_axi_uartlite_0_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x44A20000 [get_bd_addr_spaces iop_arduino/mb/Data] [get_bd_addr_segs iop_arduino/io_switch_0/S_AXI/S_AXI_reg] SEG_io_switch_0_S_AXI_reg
   create_bd_addr_seg -range 0x00040000 -offset 0x00000000 [get_bd_addr_spaces iop_arduino/mb/Instruction] [get_bd_addr_segs iop_arduino/lmb/lmb_bram_if_cntlr/SLMB/Mem] SEG_lmb_bram_if_cntlr_Mem

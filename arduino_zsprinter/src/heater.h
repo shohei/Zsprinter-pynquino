@@ -78,6 +78,7 @@ extern unsigned char manage_monitor;
 
 #ifdef PIDTEMP
   extern volatile unsigned char g_heater_pwm_val;
+  extern volatile unsigned char g_heater_pwm_val2;
  
   extern unsigned char PWM_off_time;
   extern unsigned char PWM_out_on;

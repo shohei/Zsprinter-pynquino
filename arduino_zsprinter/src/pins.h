@@ -624,7 +624,9 @@
   #define ALARM_PIN          -1
   
   #define HEATER_0_PIN        -1 
-  #define TEMP_0_PIN          99    // MUST USE ANALOG INPUT NUMBERING NOT DIGITAL OUTPUT NUMBERING!!!!!!!!!
+  #define TEMP_0_PIN          99
+  #define HEATER_1_PIN        -1
+  #define TEMP_1_PIN          99
 
 #endif
 

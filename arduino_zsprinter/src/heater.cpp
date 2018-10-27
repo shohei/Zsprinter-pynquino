@@ -64,6 +64,7 @@ unsigned long previous_millis_heater, previous_millis_bed_heater, previous_milli
 
 #ifdef PIDTEMP
 volatile unsigned char g_heater_pwm_val = 0;
+volatile unsigned char g_heater_pwm_val2 = 0;
 
 //unsigned char PWM_off_time = 0;
 //unsigned char PWM_out_on = 0;
@@ -828,8 +829,7 @@ void manage_heater(XSysMon *SysMonInstPtr)
 
 #ifdef BED_USES_THERMISTOR
 
-	//    current_bed_raw = analogRead(TEMP_1_PIN);
-	current_bed_raw = 0;
+	current_bed_raw = analogRead(SysMonInstPtr, 5);//Vaux5 is A4 pin
 
 #ifdef DEBUG_HEAT_MGMT
 	log_int("_HEAT_MGMT - analogRead(TEMP_1_PIN)", current_bed_raw);
@@ -847,16 +847,21 @@ void manage_heater(XSysMon *SysMonInstPtr)
 #endif
 
 
-#ifdef MINTEMP
-	if(current_bed_raw >= target_bed_raw || current_bed_raw < minttemp)
-#else
-		if(current_bed_raw >= target_bed_raw)
-#endif
+//#ifdef MINTEMP
+//	if(current_bed_raw >= target_bed_raw || current_bed_raw < minttemp)
+//#else
+//	    char temp_msg[32];
+//	    sprintf(temp_msg,"b:%d, t:%d\r\n",current_bed_raw,target_bed_raw);
+//	    uart_print(temp_msg);
+	    if(current_bed_raw >= target_bed_raw)
+//#endif
 		{
 			//      WRITE(HEATER_1_PIN,LOW);
+			g_heater_pwm_val2 = 0;
 		}
 		else
 		{
+			g_heater_pwm_val2 = 255;
 			//    WRITE(HEATER_1_PIN,HIGH);
 		}
 #endif
