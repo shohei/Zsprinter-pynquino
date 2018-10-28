@@ -205,8 +205,6 @@ int dispenser_delay_time = 100;
 #define CLEAR_DISPLAY       0x1
 #define PRINT_STRING        0x3
 
-//XGpio LEDInst;
-//XGpio BTNInst;
 XGpio ShieldInst;
 XGpio CK_ShieldInst;
 //XGpio HeaterInst;
@@ -2956,7 +2954,11 @@ void process_commands() {
   void update_dispenser_pressure(int channel, int target_pressure){
      if(millis() - previous_millis_dispenser > 100){
         //String base_command = "0EPH  CH001P";
-        sprintf(dispenser_cmd_msg, "0EPH  CH001P%d", target_pressure);
+        if(target_pressure<1000){
+          sprintf(dispenser_cmd_msg, "0EPH  CH001P0%d", target_pressure);
+        } else {
+          sprintf(dispenser_cmd_msg, "0EPH  CH001P%d", target_pressure);
+        } 
         int string_length = strlen(dispenser_cmd_msg);
         
         short result = 0x00;
@@ -2980,7 +2982,11 @@ void process_commands() {
        rs232c_write_nodelay(ENQ);
        usleep(1000);
 
-       sprintf(dispenser_cmd_msg, "%c0EPH  CH001P%d%c%c%c", STX, target_pressure,ubyteChar[0],lbyteChar[0],ETX);
+       if(target_pressure<1000){
+         sprintf(dispenser_cmd_msg, "%c0EPH  CH001P0%d%c%c%c", STX, target_pressure,ubyteChar[0],lbyteChar[0],ETX);
+       } else {
+         sprintf(dispenser_cmd_msg, "%c0EPH  CH001P%d%c%c%c", STX, target_pressure,ubyteChar[0],lbyteChar[0],ETX);
+       }
        rs232c_print(dispenser_cmd_msg); 
 
        rs232c_read(returned_message);
