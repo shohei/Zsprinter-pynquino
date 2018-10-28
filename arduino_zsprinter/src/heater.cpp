@@ -862,7 +862,7 @@ void manage_heater(XSysMon *SysMonInstPtr)
 		}
 		else
 		{
-			g_heater_pwm_val2 = 255;
+			g_heater_pwm_val2 = HEATER_CURRENT;
 			//    WRITE(HEATER_1_PIN,HIGH);
 		}
 #endif
