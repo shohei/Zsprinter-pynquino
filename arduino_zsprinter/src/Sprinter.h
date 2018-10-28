@@ -118,6 +118,7 @@ typedef struct {
   long acceleration_st;                              // acceleration steps/sec^2
   volatile char busy;
   float dispenser_multiplier;
+  float dispenser_pressure_gain;
   char *next_command;
 } block_t;
 

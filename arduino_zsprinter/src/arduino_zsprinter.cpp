@@ -306,8 +306,9 @@ uint8_t current_tool_number = 0;
 uint8_t last_tool_number;
 
 
-#define DISPENSER_BASE_PRESSURE 2000 // 200.0[kPa]
-float extruder_base_speed = 0.14; // When F=1200 (20[mm/s]), delta_E/delta_r = 0.14 (calculated from reference G-code from KJ)
+#define DISPENSER_BASE_PRESSURE 2000 // 200.0[kPa] as F=600 (10[mm/s])
+#define DISPENSER_BASE_SPEED 10.0 // [mm/s] = F600 [mm/min]
+float extruder_base_ratio = 0.14; // When F=1200 (20[mm/s]), delta_E/delta_r = 0.14 (calculated from reference G-code from KJ)
 int current_dispenser_pressure = DISPENSER_BASE_PRESSURE;
 int last_dispenser_pressure = DISPENSER_BASE_PRESSURE;
 bool is_first_block_element = true;
@@ -3767,10 +3768,10 @@ void process_commands() {
     block->nominal_speed = block->millimeters * inverse_second; // (mm/sec) Always > 0
     block->nominal_rate = ceil(block->step_event_count * inverse_second); // (step/sec) Always > 0
 
-    float extruder_speed = delta_mm[E_AXIS] / block->millimeters;
-    block->dispenser_multiplier = extruder_speed / extruder_base_speed;
+    float extruder_ratio = delta_mm[E_AXIS] / block->millimeters;
+    block->dispenser_multiplier = extruder_ratio / extruder_base_ratio;
+    block->dispenser_pressure_gain = feed_rate / DISPENSER_BASE_SPEED;
 
-    
     /*
    //  segment time im micro seconds
    long segment_time = lround(1000000.0/inverse_second);
@@ -5214,7 +5215,9 @@ else if (e_steps > 0) {
                 dispenser_on();
               }
               is_dispenser_running = true;
-              current_dispenser_pressure = ceil(DISPENSER_BASE_PRESSURE * current_block->dispenser_multiplier);
+              current_dispenser_pressure = ceil(DISPENSER_BASE_PRESSURE 
+                   * current_block->dispenser_multiplier 
+                   * current_block->dispenser_pressure_gain);
               if(current_dispenser_pressure>7500) current_dispenser_pressure = 7500;
               if(current_dispenser_pressure<200) current_dispenser_pressure = 200;
 
