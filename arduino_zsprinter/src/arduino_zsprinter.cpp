@@ -263,6 +263,8 @@ static XTmrCtr TimerInstancePtr3;
 static XTmrCtr TimerInstancePtr4;
 static XTmrCtr TimerInstancePtr5;
 static XTmrCtr TimerInstancePtr6;
+static XTmrCtr TimerInstancePtr7;
+static XTmrCtr TimerInstancePtr8;
 
 #define SYSMON_DEVICE_ID XPAR_SYSMON_0_DEVICE_ID //ID of xadc_wiz_0
 #define XSysMon_RawToExtVoltage(AdcData) ((((float)(AdcData))*(1.0f))/65536.0f) //(ADC 16bit result)/16/4096 = (ADC 16bit result)/65536
@@ -563,6 +565,8 @@ unsigned char manage_monitor = 255;
 //heater pwm value
 extern volatile unsigned char g_heater_pwm_val;
 extern volatile unsigned char g_heater_pwm_val2;
+extern volatile unsigned char g_fan_pwm_val;
+extern volatile unsigned char g_fan_pwm_val2;
 
 static block_t block_buffer[BLOCK_BUFFER_SIZE]; // A ring buffer for motion instructions
 static volatile unsigned char block_buffer_head; // Index of the next block to be pushed
@@ -681,6 +685,8 @@ void initsd()
 #ifdef PIDTEMP
 extern volatile unsigned char g_heater_pwm_val;
 extern volatile unsigned char g_heater_pwm_val2;
+extern volatile unsigned char g_fan_pwm_val;
+extern volatile unsigned char g_fan_pwm_val2;
 #endif
 
 void fast_xfer()
@@ -695,6 +701,8 @@ void fast_xfer()
 #ifdef PIDTEMP
   g_heater_pwm_val = 0;
   g_heater_pwm_val2 = 0;
+  g_fan_pwm_val = 0;
+  g_fan_pwm_val2 = 0;
 #endif
 
   lastxferchar = 1;
@@ -2466,9 +2474,9 @@ void process_commands() {
       break;
 #if FAN_PIN > -1
     case 106: //M106 Fan On
-#ifdef CHAIN_OF_COMMAND
-      st_synchronize(); // wait for all movements to finish
-#endif
+// #ifdef CHAIN_OF_COMMAND
+//       st_synchronize(); // wait for all movements to finish
+// #endif
       if (code_seen('S')) {
         unsigned char l_fan_code_val = constrain(code_value(), 0, 255);
 
@@ -2492,26 +2500,29 @@ void process_commands() {
 
 #if defined(FAN_SOFT_PWM) && (FAN_PIN > -1)
         g_fan_pwm_val = l_fan_code_val;
+        g_fan_pwm_val2 = l_fan_code_val;
 #else
-        WRITE(FAN_PIN, HIGH);
-        analogWrite_check(FAN_PIN, l_fan_code_val;
+        //WRITE(FAN_PIN, HIGH);
+        //analogWrite_check(FAN_PIN, l_fan_code_val;
 #endif
 
       } else {
 #if defined(FAN_SOFT_PWM) && (FAN_PIN > -1)
         g_fan_pwm_val = 255;
+        g_fan_pwm_val2 = 255;
 #else
-        WRITE(FAN_PIN, HIGH);
-        analogWrite_check(FAN_PIN, 255 );
+        //WRITE(FAN_PIN, HIGH);
+        //analogWrite_check(FAN_PIN, 255 );
 #endif
       }
       break;
     case 107: //M107 Fan Off
 #if defined(FAN_SOFT_PWM) && (FAN_PIN > -1)
       g_fan_pwm_val = 0;
+      g_fan_pwm_val2 = 0;
 #else
-      analogWrite_check(FAN_PIN, 0);
-      WRITE(FAN_PIN, LOW);
+      //analogWrite_check(FAN_PIN, 0);
+      //WRITE(FAN_PIN, LOW);
 #endif
       break;
 #endif
@@ -4787,7 +4798,87 @@ else if (e_steps > 0) {
        }
   }
 
+  void Timer_OVF_vect3(){
+  #ifdef PID_SOFT_PWM
+    if(g_fan_pwm_val >= 2)
+    {
+      _SET(ck_shields_data , FAN0_PIN);
+      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+      if(g_fan_pwm_val <= 253){
+        XTmrCtr_SetResetValue(&TimerInstancePtr7,
+            1, //Change with generic value
+            PULSES_500HZ*g_fan_pwm_val/256);
+      }else{
+        //        OCR2A = 192;
+        XTmrCtr_SetResetValue(&TimerInstancePtr7,
+            1, //Change with generic value
+            PULSES_500HZ*192/256);
+      }
+    }
+    else
+    {
+      _CLR(ck_shields_data , FAN0_PIN);
+      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+      XTmrCtr_SetResetValue(&TimerInstancePtr7,
+          1, //Change with generic value
+          PULSES_500HZ*192/256);
+    }
+#endif
+  }
 
+  void Timer_COMP_vect3(){
+    if(g_fan_pwm_val > 253)
+       {
+      _SET(ck_shields_data , FAN0_PIN);
+      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+       }
+       else
+       {
+        _CLR(ck_shields_data , FAN0_PIN);
+        XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+       }
+  }
+
+  void Timer_OVF_vect4(){
+  #ifdef PID_SOFT_PWM
+    if(g_fan_pwm_val2 >= 2)
+    {
+      _SET(ck_shields_data , FAN1_PIN);
+      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+      if(g_fan_pwm_val2 <= 253){
+        XTmrCtr_SetResetValue(&TimerInstancePtr8,
+            1, //Change with generic value
+            PULSES_500HZ*g_fan_pwm_val2/256);
+      }else{
+        //        OCR2A = 192;
+        XTmrCtr_SetResetValue(&TimerInstancePtr8,
+            1, //Change with generic value
+            PULSES_500HZ*192/256);
+      }
+    }
+    else
+    {
+      _CLR(ck_shields_data , FAN1_PIN);
+      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+      XTmrCtr_SetResetValue(&TimerInstancePtr8,
+          1, //Change with generic value
+          PULSES_500HZ*192/256);
+    }
+#endif
+  }
+
+  void Timer_COMP_vect4(){
+    if(g_fan_pwm_val2 > 253)
+       {
+      _SET(ck_shields_data , FAN1_PIN);
+      XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+       }
+       else
+       {
+        _CLR(ck_shields_data , FAN1_PIN);
+        XGpio_DiscreteWrite(&CK_ShieldInst, 1, ck_shields_data);
+       }
+  }
 //  XScuGic InterruptController; /* Instance of the Interrupt Controller */
 //  static XScuGic_Config *GicConfig;/* The configuration parameters of the controller */
   XIntc IntcInstancePtr;
@@ -5764,6 +5855,34 @@ else if (e_steps > 0) {
 	    }
   }
 
+  void Timer_InterruptHandler7(void *data, u8 TmrCtrNumber){
+	    //500Hz cycle; this is used for the heater management
+	    //xil_printf("Interrupt acknowledged.\r\n");
+	    u32 reg0 = Xil_In32(TimerInstancePtr7.BaseAddress + XTmrCtr_Offsets[0] + XTC_TCSR_OFFSET);
+	    u32 reg1 = Xil_In32(TimerInstancePtr7.BaseAddress + XTmrCtr_Offsets[1] + XTC_TCSR_OFFSET);
+	    if(_CHK(reg0,8)){
+	      //printf("PWM ON\r\n");
+	      Timer_OVF_vect3();
+	    } else if(_CHK(reg1,8)){
+	      //printf("PWM OFF\r\n");
+	      Timer_COMP_vect3();
+	    }
+  }
+
+  void Timer_InterruptHandler8(void *data, u8 TmrCtrNumber){
+	    //500Hz cycle; this is used for the heater management
+	    //xil_printf("Interrupt acknowledged.\r\n");
+	    u32 reg0 = Xil_In32(TimerInstancePtr8.BaseAddress + XTmrCtr_Offsets[0] + XTC_TCSR_OFFSET);
+	    u32 reg1 = Xil_In32(TimerInstancePtr8.BaseAddress + XTmrCtr_Offsets[1] + XTC_TCSR_OFFSET);
+	    if(_CHK(reg0,8)){
+	      //printf("PWM ON\r\n");
+	      Timer_OVF_vect4();
+	    } else if(_CHK(reg1,8)){
+	      //printf("PWM OFF\r\n");
+	      Timer_COMP_vect4();
+	    }
+  }
+
   void initSteppers(){
     //no use of enable pin
     //  _CLR(shields_data , X_EN_PIN);
@@ -6013,6 +6132,82 @@ else if (e_steps > 0) {
          1, //Channel 1
          0x0);
 
+     //**************************************************************************//
+     // Timer7 (Fan0 PWM generation)
+     //**************************************************************************//
+
+     xStatus = XTmrCtr_Initialize(&TimerInstancePtr7,XPAR_IOP_ARDUINO_AXI_TIMER_1_DEVICE_ID);
+     if(XST_SUCCESS != xStatus){
+    // print("TIMER3 INIT FAILED \n\r");
+    	 uart_print("Timer7 init failed\r\n");
+     }
+
+     XTmrCtr_SetHandler(&TimerInstancePtr7,
+         Timer_InterruptHandler7,
+         &TimerInstancePtr7);
+
+     //enable interrupt & auto reload
+     XTmrCtr_SetOptions(&TimerInstancePtr7,
+         0,
+         (XTC_INT_MODE_OPTION | XTC_AUTO_RELOAD_OPTION | XTC_DOWN_COUNT_OPTION));
+
+     CounterControlReg = Xil_In32(TimerInstancePtr7.BaseAddress + XTmrCtr_Offsets[0] + XTC_TCSR_OFFSET);
+     CounterControlReg = CounterControlReg | XTC_CSR_ENABLE_PWM_MASK | XTC_CSR_EXT_GENERATE_MASK;
+     Xil_Out32(TimerInstancePtr7.BaseAddress + XTmrCtr_Offsets[0] + XTC_TCSR_OFFSET, CounterControlReg);
+
+     XTmrCtr_SetOptions(&TimerInstancePtr7,
+         1,
+         (XTC_INT_MODE_OPTION | XTC_AUTO_RELOAD_OPTION | XTC_DOWN_COUNT_OPTION));
+
+     CounterControlReg = Xil_In32(TimerInstancePtr7.BaseAddress + XTmrCtr_Offsets[1] + XTC_TCSR_OFFSET);
+     CounterControlReg = CounterControlReg | XTC_CSR_ENABLE_PWM_MASK | XTC_CSR_EXT_GENERATE_MASK;
+     Xil_Out32(TimerInstancePtr7.BaseAddress + XTmrCtr_Offsets[1] + XTC_TCSR_OFFSET, CounterControlReg);
+
+     XTmrCtr_SetResetValue(&TimerInstancePtr7,
+         0, //Channel 0
+         0x30d40);//500Hz
+     XTmrCtr_SetResetValue(&TimerInstancePtr7,
+         1, //Channel 1
+         0x0);
+
+     //**************************************************************************//
+     // Timer8 (Fan1 PWM generation)
+     //**************************************************************************//
+
+     xStatus = XTmrCtr_Initialize(&TimerInstancePtr8,XPAR_IOP_ARDUINO_AXI_TIMER_2_DEVICE_ID);
+     if(XST_SUCCESS != xStatus){
+    // print("TIMER3 INIT FAILED \n\r");
+    	 uart_print("Timer8 init failed\r\n");
+     }
+
+     XTmrCtr_SetHandler(&TimerInstancePtr8,
+         Timer_InterruptHandler8,
+         &TimerInstancePtr8);
+
+     //enable interrupt & auto reload
+     XTmrCtr_SetOptions(&TimerInstancePtr8,
+         0,
+         (XTC_INT_MODE_OPTION | XTC_AUTO_RELOAD_OPTION | XTC_DOWN_COUNT_OPTION));
+
+     CounterControlReg = Xil_In32(TimerInstancePtr8.BaseAddress + XTmrCtr_Offsets[0] + XTC_TCSR_OFFSET);
+     CounterControlReg = CounterControlReg | XTC_CSR_ENABLE_PWM_MASK | XTC_CSR_EXT_GENERATE_MASK;
+     Xil_Out32(TimerInstancePtr8.BaseAddress + XTmrCtr_Offsets[0] + XTC_TCSR_OFFSET, CounterControlReg);
+
+     XTmrCtr_SetOptions(&TimerInstancePtr8,
+         1,
+         (XTC_INT_MODE_OPTION | XTC_AUTO_RELOAD_OPTION | XTC_DOWN_COUNT_OPTION));
+
+     CounterControlReg = Xil_In32(TimerInstancePtr8.BaseAddress + XTmrCtr_Offsets[1] + XTC_TCSR_OFFSET);
+     CounterControlReg = CounterControlReg | XTC_CSR_ENABLE_PWM_MASK | XTC_CSR_EXT_GENERATE_MASK;
+     Xil_Out32(TimerInstancePtr8.BaseAddress + XTmrCtr_Offsets[1] + XTC_TCSR_OFFSET, CounterControlReg);
+
+     XTmrCtr_SetResetValue(&TimerInstancePtr8,
+         0, //Channel 0
+         0x30d40);//500Hz
+     XTmrCtr_SetResetValue(&TimerInstancePtr8,
+         1, //Channel 1
+         0x0);
+
     //**************************************************************************//
     // Connect INTC and Timers 
     //**************************************************************************//
@@ -6058,6 +6253,19 @@ else if (e_steps > 0) {
      if (xStatus != XST_SUCCESS){
        // print("connect timer5 error\n\r");
      }
+     xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_IOP_ARDUINO_INTC_IOP_ARDUINO_AXI_TIMER_1_INTERRUPT_INTR,
+         (XInterruptHandler)XTmrCtr_InterruptHandler,
+         (void*)&TimerInstancePtr7);
+     if (xStatus != XST_SUCCESS){
+       // print("connect timer6 error\n\r");
+     }
+     xStatus = XIntc_Connect(&IntcInstancePtr, XPAR_IOP_ARDUINO_INTC_IOP_ARDUINO_AXI_TIMER_2_INTERRUPT_INTR,
+         (XInterruptHandler)XTmrCtr_InterruptHandler,
+         (void*)&TimerInstancePtr8);
+     if (xStatus != XST_SUCCESS){
+       // print("connect timer7 error\n\r");
+     }
+
     xStatus = XIntc_Start(&IntcInstancePtr, XIN_REAL_MODE);
     if (xStatus != XST_SUCCESS){
       // print("intc start error\n\r");
@@ -6068,6 +6276,8 @@ else if (e_steps > 0) {
     XIntc_Enable(&IntcInstancePtr, XPAR_IOP_ARDUINO_INTC_IOP_ARDUINO_TIMERS_SUBSYSTEM_TIMER_3_INTERRUPT_INTR);
     XIntc_Enable(&IntcInstancePtr, XPAR_IOP_ARDUINO_INTC_IOP_ARDUINO_TIMERS_SUBSYSTEM_TIMER_4_INTERRUPT_INTR);
     XIntc_Enable(&IntcInstancePtr, XPAR_IOP_ARDUINO_INTC_IOP_ARDUINO_AXI_TIMER_0_INTERRUPT_INTR);
+    XIntc_Enable(&IntcInstancePtr, XPAR_IOP_ARDUINO_INTC_IOP_ARDUINO_AXI_TIMER_1_INTERRUPT_INTR);
+    XIntc_Enable(&IntcInstancePtr, XPAR_IOP_ARDUINO_INTC_IOP_ARDUINO_AXI_TIMER_2_INTERRUPT_INTR);
     microblaze_enable_interrupts();
 
     XTmrCtr_Start(&TimerInstancePtr,0);
@@ -6078,6 +6288,10 @@ else if (e_steps > 0) {
     XTmrCtr_Start(&TimerInstancePtr5,0);
     XTmrCtr_Start(&TimerInstancePtr6,0);
     XTmrCtr_Start(&TimerInstancePtr6,1);
+    XTmrCtr_Start(&TimerInstancePtr7,0);
+    XTmrCtr_Start(&TimerInstancePtr7,1);
+    XTmrCtr_Start(&TimerInstancePtr8,0);
+    XTmrCtr_Start(&TimerInstancePtr8,1);
   }
 
   void st_init() {

@@ -85,6 +85,7 @@ int temp_iState_max = 256L * PID_INTEGRAL_DRIVE_MAX / PID_IGAIN;
 
 #if defined(FAN_SOFT_PWM) && (FAN_PIN > -1)
 volatile unsigned char g_fan_pwm_val = 0;
+volatile unsigned char g_fan_pwm_val2 = 0;
 #endif
 
 #ifdef AUTOTEMP
@@ -204,66 +205,66 @@ void init_Timer2_softpwm(void)
 }
 #endif //defined(PID_SOFT_PWM) || (defined(FAN_SOFT_PWM) && (FAN_PIN > -1))
 
-#if defined(PID_SOFT_PWM) || (defined(FAN_SOFT_PWM) && (FAN_PIN > -1))
+// #if defined(PID_SOFT_PWM) || (defined(FAN_SOFT_PWM) && (FAN_PIN > -1))
 // ISR(TIMER2_OVF_vect)
 //this function is not used; just preserving following function: ISR(TIMER2_OVF_vect)
 //this code will be migrated into TimerHandler2(AXI Timer2), which is 500Hz interrupt handler
-void ISR_TIMER2_OVF_vect(){
-
-  //--------------------------------------
-  // Soft PWM, Heater, start PWM cycle
-  //--------------------------------------
-  #ifdef PID_SOFT_PWM
-    if(g_heater_pwm_val >= 2)
-    {
-      #if LED_PIN > -1
-//        WRITE(LED_PIN,HIGH);
-      #endif
-//      WRITE(HEATER_0_PIN,HIGH);
-
-      if(g_heater_pwm_val <= 253){
-//        OCR2A = g_heater_pwm_val;
-      }else{
-//        OCR2A = 192;
-      }
-     }
-    else
-    {
-      #if LED_PIN > -1
-//        WRITE(LED_PIN,LOW);
-      #endif
-//      WRITE(HEATER_0_PIN,LOW);
-//      OCR2A = 192;
-    }
-#endif // defined(PID_SOFT_PWM) || (defined(FAN_SOFT_PWM) && (FAN_PIN > -1))
+// void ISR_TIMER2_OVF_vect(){
+// 
+//   //--------------------------------------
+//   // Soft PWM, Heater, start PWM cycle
+//   //--------------------------------------
+//   #ifdef PID_SOFT_PWM
+//     if(g_heater_pwm_val >= 2)
+//     {
+//       #if LED_PIN > -1
+// //        WRITE(LED_PIN,HIGH);
+//       #endif
+// //      WRITE(HEATER_0_PIN,HIGH);
+// 
+//       if(g_heater_pwm_val <= 253){
+// //        OCR2A = g_heater_pwm_val;
+//       }else{
+// //        OCR2A = 192;
+//       }
+//      }
+//     else
+//     {
+//       #if LED_PIN > -1
+// //        WRITE(LED_PIN,LOW);
+//       #endif
+// //      WRITE(HEATER_0_PIN,LOW);
+// //      OCR2A = 192;
+//     }
+// #endif // defined(PID_SOFT_PWM) || (defined(FAN_SOFT_PWM) && (FAN_PIN > -1))
 
 //--------------------------------------
 // Soft PWM, Fan, start PWM cycle
 //--------------------------------------
-#if defined(FAN_SOFT_PWM) && (FAN_PIN > -1)
-if(g_fan_pwm_val >= 2)
-{
-#if (FAN_PIN > -1)
-	//        WRITE(FAN_PIN,HIGH);
-#endif
-
-	if(g_fan_pwm_val <= 253)
-		//        OCR2B = g_fan_pwm_val;
-		else
-			//        OCR2B = 128;
-}
-else
-{
-#if (FAN_PIN > -1)
-	//        WRITE(FAN_PIN,LOW);
-#endif
-
-	//      OCR2B = 128;
-}
-#endif
-
-}
-#endif
+// #if defined(FAN_SOFT_PWM) && (FAN_PIN > -1)
+// if(g_fan_pwm_val >= 2)
+// {
+// #if (FAN_PIN > -1)
+// 	//        WRITE(FAN_PIN,HIGH);
+// #endif
+// 
+// 	if(g_fan_pwm_val <= 253)
+// 		//        OCR2B = g_fan_pwm_val;
+// 		else
+// 			//        OCR2B = 128;
+// }
+// else
+// {
+// #if (FAN_PIN > -1)
+// 	//        WRITE(FAN_PIN,LOW);
+// #endif
+// 
+// 	//      OCR2B = 128;
+// }
+// #endif
+// 
+// }
+// #endif
 
 
 #ifdef PID_SOFT_PWM

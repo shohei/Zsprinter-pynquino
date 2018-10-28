@@ -97,6 +97,7 @@ extern unsigned char manage_monitor;
 
 #if defined(FAN_SOFT_PWM) && (FAN_PIN > -1)
   extern volatile unsigned char g_fan_pwm_val;
+  extern volatile unsigned char g_fan_pwm_val2;
 #endif
 
 #ifdef AUTOTEMP

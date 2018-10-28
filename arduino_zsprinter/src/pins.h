@@ -618,7 +618,7 @@
   #define SDPOWER          -1
   #define SDSS          -1
   #define LED_PIN            -1
-  #define FAN_PIN            -1 
+  #define FAN_PIN            99 
   #define PS_ON_PIN          -1
   #define KILL_PIN           -1
   #define ALARM_PIN          -1
