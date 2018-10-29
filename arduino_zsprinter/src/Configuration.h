@@ -327,6 +327,11 @@ const int dropsegments=5; //everything with less than this number of steps will 
 //every Digital output for it, main usage for Sanguinololu
 #define FAN_SOFT_PWM
 
+
+// Make fan current 0 while not using (Avoid short circuit risk)
+#define FAN0_CURRENT 0 //0-255
+#define FAN1_CURRENT 0 //0-255
+
 //-----------------------------------------------------------------------
 //// MINIMUM START SPEED FOR FAN
 //-----------------------------------------------------------------------

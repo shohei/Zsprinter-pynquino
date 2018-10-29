@@ -306,6 +306,8 @@ uint8_t last_tool_number;
 
 #define DISPENSER_BASE_PRESSURE 2000 // 200.0[kPa] as F=600 (10[mm/s])
 #define DISPENSER_BASE_SPEED 10.0 // [mm/s] = F600 [mm/min]
+#define DISPENSER_PRESSURE_MAX 8000
+#define DISPENSER_PRESSURE_MIN 200
 float extruder_base_ratio = 0.14; // When F=1200 (20[mm/s]), delta_E/delta_r = 0.14 (calculated from reference G-code from KJ)
 int current_dispenser_pressure = DISPENSER_BASE_PRESSURE;
 int last_dispenser_pressure = DISPENSER_BASE_PRESSURE;
@@ -2507,8 +2509,8 @@ void process_commands() {
 
       } else {
 #if defined(FAN_SOFT_PWM) && (FAN_PIN > -1)
-        g_fan_pwm_val = 255;
-        g_fan_pwm_val2 = 255;
+        g_fan_pwm_val = FAN0_CURRENT;
+        g_fan_pwm_val2 = FAN1_CURRENT;
 #else
         //WRITE(FAN_PIN, HIGH);
         //analogWrite_check(FAN_PIN, 255 );
@@ -5224,8 +5226,8 @@ else if (e_steps > 0) {
               current_dispenser_pressure = ceil(DISPENSER_BASE_PRESSURE 
                    * current_block->dispenser_multiplier 
                    * current_block->dispenser_pressure_gain);
-              if(current_dispenser_pressure>7500) current_dispenser_pressure = 7500;
-              if(current_dispenser_pressure<200) current_dispenser_pressure = 200;
+              if(current_dispenser_pressure>DISPENSER_PRESSURE_MAX) current_dispenser_pressure = DISPENSER_PRESSURE_MAX;
+              if(current_dispenser_pressure<DISPENSER_PRESSURE_MIN) current_dispenser_pressure = DISPENSER_PRESSURE_MIN;
 
               is_first_block_element = false;
             }
@@ -6072,8 +6074,10 @@ else if (e_steps > 0) {
          0, //Channel 0
          // 0x1dcd6500); //0.2Hz
          // 0x4c4b40); //20Hz 
-         0x5f5e100); //1Hz -> for debug
-         //  0x1312d00);//5Hz
+         // 0x5f5e100); //1Hz -> for debug
+         // 0x3b9aca00); //10Hz 
+           0x1312d00);//5Hz
+         //0x2faf0800); //8Hz
 
      XTmrCtr_SetOptions(&TimerInstancePtr4,
          0, //Channel 0
