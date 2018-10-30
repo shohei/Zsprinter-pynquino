@@ -15,12 +15,12 @@ set_property -dict {PACKAGE_PIN N16 IOSTANDARD LVCMOS33} [get_ports {leds_4bits_
 set_property -dict {PACKAGE_PIN M14 IOSTANDARD LVCMOS33} [get_ports {leds_4bits_tri_o[3]}]
 
 ## RGBLEDs
-set_property -dict { PACKAGE_PIN L15   IOSTANDARD LVCMOS33 } [get_ports { rgbleds_6bits_tri_o[0] }]; 
-set_property -dict { PACKAGE_PIN G17   IOSTANDARD LVCMOS33 } [get_ports { rgbleds_6bits_tri_o[1] }]; 
-set_property -dict { PACKAGE_PIN N15   IOSTANDARD LVCMOS33 } [get_ports { rgbleds_6bits_tri_o[2] }]; 
-set_property -dict { PACKAGE_PIN G14   IOSTANDARD LVCMOS33 } [get_ports { rgbleds_6bits_tri_o[3] }];
-set_property -dict { PACKAGE_PIN L14   IOSTANDARD LVCMOS33 } [get_ports { rgbleds_6bits_tri_o[4] }]; 
-set_property -dict { PACKAGE_PIN M15   IOSTANDARD LVCMOS33 } [get_ports { rgbleds_6bits_tri_o[5] }]; 
+set_property -dict {PACKAGE_PIN L15 IOSTANDARD LVCMOS33} [get_ports {rgbleds_6bits_tri_o[0]}]
+set_property -dict {PACKAGE_PIN G17 IOSTANDARD LVCMOS33} [get_ports {rgbleds_6bits_tri_o[1]}]
+set_property -dict {PACKAGE_PIN N15 IOSTANDARD LVCMOS33} [get_ports {rgbleds_6bits_tri_o[2]}]
+set_property -dict {PACKAGE_PIN G14 IOSTANDARD LVCMOS33} [get_ports {rgbleds_6bits_tri_o[3]}]
+set_property -dict {PACKAGE_PIN L14 IOSTANDARD LVCMOS33} [get_ports {rgbleds_6bits_tri_o[4]}]
+set_property -dict {PACKAGE_PIN M15 IOSTANDARD LVCMOS33} [get_ports {rgbleds_6bits_tri_o[5]}]
 
 ## Audio
 set_property -dict {PACKAGE_PIN F17 IOSTANDARD LVCMOS33} [get_ports {pdm_m_clk[0]}]
@@ -102,8 +102,8 @@ set_property -dict {PACKAGE_PIN W15 IOSTANDARD LVCMOS33} [get_ports arduino_dire
 set_property -dict {PACKAGE_PIN T12 IOSTANDARD LVCMOS33} [get_ports arduino_direct_spi_io0_io]
 set_property -dict {PACKAGE_PIN H15 IOSTANDARD LVCMOS33} [get_ports arduino_direct_spi_sck_io]
 set_property -dict {PACKAGE_PIN F16 IOSTANDARD LVCMOS33} [get_ports arduino_direct_spi_ss_io]
-set_property -dict {PACKAGE_PIN U10 IOSTANDARD LVCMOS33} [get_ports {arduino_gpio_tri_io[19]}]
-set_property -dict {PACKAGE_PIN T5 IOSTANDARD LVCMOS33} [get_ports {arduino_gpio_tri_io[18]}]
+set_property -dict {PACKAGE_PIN T9 IOSTANDARD LVCMOS33} [get_ports {arduino_gpio_tri_io[19]}]
+set_property -dict {PACKAGE_PIN U9 IOSTANDARD LVCMOS33} [get_ports {arduino_gpio_tri_io[18]}]
 set_property -dict {PACKAGE_PIN V11 IOSTANDARD LVCMOS33} [get_ports {arduino_gpio_tri_io[17]}]
 set_property -dict {PACKAGE_PIN W11 IOSTANDARD LVCMOS33} [get_ports {arduino_gpio_tri_io[16]}]
 set_property -dict {PACKAGE_PIN Y12 IOSTANDARD LVCMOS33} [get_ports {arduino_gpio_tri_io[15]}]
@@ -124,27 +124,33 @@ set_property -dict {PACKAGE_PIN G20 IOSTANDARD LVCMOS33} [get_ports Vaux13_v_n]
 set_property -dict {PACKAGE_PIN G19 IOSTANDARD LVCMOS33} [get_ports Vaux13_v_p]
 
 ## ChipKit digital
-set_property -dict { PACKAGE_PIN U5    IOSTANDARD LVCMOS33 } [get_ports { ck_gpio_tri_io[0] }];
-set_property -dict { PACKAGE_PIN V5    IOSTANDARD LVCMOS33 } [get_ports { ck_gpio_tri_io[1] }];
-set_property -dict { PACKAGE_PIN V6    IOSTANDARD LVCMOS33 } [get_ports { ck_gpio_tri_io[2] }];
-set_property -dict { PACKAGE_PIN U7    IOSTANDARD LVCMOS33 } [get_ports { ck_gpio_tri_io[3] }];
-set_property -dict { PACKAGE_PIN V7    IOSTANDARD LVCMOS33 } [get_ports { ck_gpio_tri_io[4] }];
-set_property -dict { PACKAGE_PIN U8    IOSTANDARD LVCMOS33 } [get_ports { ck_gpio_tri_io[5] }];
-set_property -dict { PACKAGE_PIN V8    IOSTANDARD LVCMOS33 } [get_ports { ck_gpio_tri_io[6] }];
-set_property -dict { PACKAGE_PIN V10   IOSTANDARD LVCMOS33 } [get_ports { ck_gpio_tri_io[7] }];
-set_property -dict { PACKAGE_PIN W10   IOSTANDARD LVCMOS33 } [get_ports { ck_gpio_tri_io[8] }];
-set_property -dict { PACKAGE_PIN W6    IOSTANDARD LVCMOS33 } [get_ports { ck_gpio_tri_io[9] }];
-set_property -dict { PACKAGE_PIN Y6    IOSTANDARD LVCMOS33 } [get_ports { ck_gpio_tri_io[10] }];
-set_property -dict { PACKAGE_PIN Y7    IOSTANDARD LVCMOS33 } [get_ports { ck_gpio_tri_io[11] }];
-set_property -dict { PACKAGE_PIN W8    IOSTANDARD LVCMOS33 } [get_ports { ck_gpio_tri_io[12] }];
-set_property -dict { PACKAGE_PIN Y8    IOSTANDARD LVCMOS33 } [get_ports { ck_gpio_tri_io[13] }];
+set_property -dict {PACKAGE_PIN U5 IOSTANDARD LVCMOS33} [get_ports {ck_gpio_tri_io[0]}]
+set_property -dict {PACKAGE_PIN V5 IOSTANDARD LVCMOS33} [get_ports {ck_gpio_tri_io[1]}]
+set_property -dict {PACKAGE_PIN V6 IOSTANDARD LVCMOS33} [get_ports {ck_gpio_tri_io[2]}]
+set_property -dict {PACKAGE_PIN U7 IOSTANDARD LVCMOS33} [get_ports {ck_gpio_tri_io[3]}]
+set_property -dict {PACKAGE_PIN V7 IOSTANDARD LVCMOS33} [get_ports {ck_gpio_tri_io[4]}]
+set_property -dict {PACKAGE_PIN U8 IOSTANDARD LVCMOS33} [get_ports {ck_gpio_tri_io[5]}]
+set_property -dict {PACKAGE_PIN V8 IOSTANDARD LVCMOS33} [get_ports {ck_gpio_tri_io[6]}]
+set_property -dict {PACKAGE_PIN V10 IOSTANDARD LVCMOS33} [get_ports {ck_gpio_tri_io[7]}]
+set_property -dict {PACKAGE_PIN W10 IOSTANDARD LVCMOS33} [get_ports {ck_gpio_tri_io[8]}]
+set_property -dict {PACKAGE_PIN W6 IOSTANDARD LVCMOS33} [get_ports {ck_gpio_tri_io[9]}]
+set_property -dict {PACKAGE_PIN Y6 IOSTANDARD LVCMOS33} [get_ports {ck_gpio_tri_io[10]}]
+set_property -dict {PACKAGE_PIN Y7 IOSTANDARD LVCMOS33} [get_ports {ck_gpio_tri_io[11]}]
+set_property -dict {PACKAGE_PIN W8 IOSTANDARD LVCMOS33} [get_ports {ck_gpio_tri_io[12]}]
+set_property -dict {PACKAGE_PIN Y8 IOSTANDARD LVCMOS33} [get_ports {ck_gpio_tri_io[13]}]
 set_property -dict { PACKAGE_PIN W9    IOSTANDARD LVCMOS33 } [get_ports { ck_gpio_tri_io[14] }];
 set_property -dict { PACKAGE_PIN Y9    IOSTANDARD LVCMOS33 } [get_ports { ck_gpio_tri_io[15] }];
 
 ## ChipKit analog
-set_property -dict { PACKAGE_PIN F19   IOSTANDARD LVCMOS33 } [get_ports Vaux12_v_p];
-set_property -dict { PACKAGE_PIN F20   IOSTANDARD LVCMOS33 } [get_ports Vaux12_v_n];
-set_property -dict { PACKAGE_PIN C20   IOSTANDARD LVCMOS33 } [get_ports Vaux0_v_p];
-set_property -dict { PACKAGE_PIN B20   IOSTANDARD LVCMOS33 } [get_ports Vaux0_v_n];
-set_property -dict { PACKAGE_PIN B19   IOSTANDARD LVCMOS33 } [get_ports Vaux8_v_p];
-set_property -dict { PACKAGE_PIN A20   IOSTANDARD LVCMOS33 } [get_ports Vaux8_v_n];
+set_property -dict {PACKAGE_PIN F19 IOSTANDARD LVCMOS33} [get_ports Vaux12_v_p]
+set_property -dict {PACKAGE_PIN F20 IOSTANDARD LVCMOS33} [get_ports Vaux12_v_n]
+set_property -dict {PACKAGE_PIN C20 IOSTANDARD LVCMOS33} [get_ports Vaux0_v_p]
+set_property -dict {PACKAGE_PIN B20 IOSTANDARD LVCMOS33} [get_ports Vaux0_v_n]
+set_property -dict {PACKAGE_PIN B19 IOSTANDARD LVCMOS33} [get_ports Vaux8_v_p]
+set_property -dict {PACKAGE_PIN A20 IOSTANDARD LVCMOS33} [get_ports Vaux8_v_n]
+
+set_property IOSTANDARD LVCMOS33 [get_ports UART_0_rxd]
+set_property IOSTANDARD LVCMOS33 [get_ports UART_0_txd]
+set_property PACKAGE_PIN W9 [get_ports UART_0_rxd]
+set_property PACKAGE_PIN Y9 [get_ports UART_0_txd]
+
