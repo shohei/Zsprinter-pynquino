@@ -54,11 +54,11 @@
 #include <xparameters.h>
 #include "xil_types.h"
 
-#define MAILBOX_CMD_ADDR       (*(volatile u32 *)(0x0000FFFC))
-#define MAILBOX_DATA(x)        (*(volatile u32 *)(0x0000F000 +((x)*4)))
-#define MAILBOX_DATA_PTR(x)    ( (volatile u32 *)(0x0000F000 +((x)*4)))
-#define MAILBOX_DATA_FLOAT(x)     (*(volatile float *)(0x0000F000 +((x)*4)))
-#define MAILBOX_DATA_FLOAT_PTR(x) ( (volatile float *)(0x0000F000 +((x)*4)))
+#define MAILBOX_CMD_ADDR       (*(volatile u32 *)(0x00003FFFC))
+#define MAILBOX_DATA(x)        (*(volatile u32 *)(0x00003F000 +((x)*4)))
+#define MAILBOX_DATA_PTR(x)    ( (volatile u32 *)(0x00003F000 +((x)*4)))
+#define MAILBOX_DATA_FLOAT(x)     (*(volatile float *)(0x00003F000 +((x)*4)))
+#define MAILBOX_DATA_FLOAT_PTR(x) ( (volatile float *)(0x00003F000 +((x)*4)))
 
 /*
  * Logging API

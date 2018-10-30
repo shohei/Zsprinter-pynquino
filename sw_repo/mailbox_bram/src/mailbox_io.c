@@ -62,10 +62,10 @@
 #include "mailbox_io.h"
 #endif
 
-#define STDIN_OFFSET 0xF000
-#define STDOUT_OFFSET 0xF400
-#define RPCIN_OFFSET 0xF800
-#define RPCOUT_OFFSET 0xFC00
+#define STDIN_OFFSET 0x3F000
+#define STDOUT_OFFSET 0x3F400
+#define RPCIN_OFFSET 0xF3800
+#define RPCOUT_OFFSET 0x3FC00
 #define IO_SIZE 0x400
 
 #define MAX_DESCRIPTOR 10
@@ -127,7 +127,7 @@ int mailbox_available(int file) {
 
 	// The BRAM can produce rubbish when a read/write collision happens
 	// so read twice to make sure that the available data if valid.
-	int last_available = 0xFFFF;
+	int last_available = 0x3FFFF;
 	while (last_available != available) {
 		last_available = available;
 		if (read_stream) {

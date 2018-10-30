@@ -1,5 +1,5 @@
 # Makefile to build BSPs.
-HDF := ../Pynq-Z1/base/base/base.sdk/base.hdf
+HDF := ../Pynq-Z1/base/base/base.sdk/base_wrapper.hdf
 HW_DEF := hw_base
 
 all: sdk_workspace

@@ -65,6 +65,7 @@ foreach mb $processors {
         puts "Creating new BSP ${bsp} ..."
         createbsp -name $bsp -proc $mb -hwproject $hw_def -os standalone
         setlib -bsp $bsp -lib pynqmb
+        setlib -bsp $bsp -lib pynquino
         set ips [hsi::get_cells [hsi::get_property SLAVES $mb]]
         set interrupt [find_interrupt_gpio $ips]
         set brams [find_ip $ips lmb_bram_if_cntlr]
