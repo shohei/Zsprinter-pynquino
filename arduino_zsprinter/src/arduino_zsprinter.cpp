@@ -3654,6 +3654,9 @@ void process_commands() {
     // Mark block as not busy (Not executed by the stepper interrupt)
     block->busy = false;
 
+    // Set current tool number
+    block->current_tool_number = current_tool_number;
+
     // Number of steps for each axis
     block->steps_x = labs(target[X_AXIS] - position[X_AXIS]);
     block->steps_y = labs(target[Y_AXIS] - position[Y_AXIS]);
@@ -5214,7 +5217,7 @@ else if (e_steps > 0) {
         counter_e += current_block->steps_e;
         if (counter_e > 0) {
 
-         if(current_tool_number==1){
+         if(current_block->current_tool_number==1){
             e_pulse_counter++; // counter for dispenser and UV LED
 
             if(is_first_block_element){
@@ -5233,7 +5236,7 @@ else if (e_steps > 0) {
             }
          } 
 
-         if(current_tool_number==0){
+         if(current_block->current_tool_number==0){
             // WRITE(E_STEP_PIN, HIGH);
             _SET(shields_data , STEP_E_PIN);
             XGpio_DiscreteWrite(&ShieldInst, 1, shields_data);
@@ -5242,7 +5245,7 @@ else if (e_steps > 0) {
           }
 
           counter_e -= current_block->step_event_count;
-          if(current_tool_number==0){
+          if(current_block->current_tool_number==0){
             // WRITE(E_STEP_PIN, LOW);
             _CLR(shields_data , STEP_E_PIN);
             XGpio_DiscreteWrite(&ShieldInst, 1, shields_data);

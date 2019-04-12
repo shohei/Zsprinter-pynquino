@@ -120,6 +120,7 @@ typedef struct {
   float dispenser_multiplier;
   float dispenser_pressure_gain;
   char *next_command;
+  uint8_t current_tool_number;
 } block_t;
 
 
