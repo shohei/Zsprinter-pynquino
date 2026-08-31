@@ -77,7 +77,7 @@ set script_folder [_tcl::get_script_folder]
 ################################################################
 # Check if script is running in correct Vivado version.
 ################################################################
-set scripts_vivado_version 2018.2
+set scripts_vivado_version 2026.1
 set current_vivado_version [version -short]
 
 if { [string first $scripts_vivado_version $current_vivado_version] == -1 } {
@@ -104,7 +104,7 @@ if { $list_projs eq "" } {
    create_project ${overlay_name} ${overlay_name} -part xc7z020clg400-1
 }
 
-set_property  ip_repo_paths  ../../ip [current_project]
+set_property  ip_repo_paths  ../../PYNQ/boards/ip [current_project]
 update_ip_catalog
 
 # CHANGE DESIGN NAME HERE
@@ -195,15 +195,15 @@ xilinx.com:user:interface_slice:1.0\
 xilinx.com:ip:axi_intc:4.1\
 xilinx.com:user:dff_en_reset_vector:1.0\
 xilinx.com:user:io_switch:1.1\
-xilinx.com:ip:microblaze:10.0\
-xilinx.com:ip:axi_bram_ctrl:4.0\
+xilinx.com:ip:microblaze:11.0\
+xilinx.com:ip:axi_bram_ctrl:4.1\
 xilinx.com:ip:axi_uartlite:2.0\
 xilinx.com:ip:xadc_wiz:3.3\
-xilinx.com:ip:axi_iic:2.0\
+xilinx.com:ip:axi_iic:2.1\
 xilinx.com:ip:axi_quad_spi:3.2\
 xilinx.com:ip:axi_timer:2.0\
 xilinx.com:ip:axi_dma:7.1\
-xilinx.com:ip:axis_data_fifo:1.1\
+xilinx.com:ip:axis_data_fifo:2.0\
 xilinx.com:hls:trace_cntrl_64:1.4\
 xilinx.com:hls:trace_cntrl_32:1.4\
 xilinx.com:ip:axi_vdma:6.3\
@@ -216,8 +216,8 @@ xilinx.com:hls:pixel_pack:1.0\
 xilinx.com:hls:pixel_unpack:1.0\
 xilinx.com:user:color_swap:1.1\
 digilentinc.com:ip:dvi2rgb:1.7\
-xilinx.com:ip:v_vid_in_axi4s:4.0\
-xilinx.com:ip:v_tc:6.1\
+xilinx.com:ip:v_vid_in_axi4s:5.0\
+xilinx.com:ip:v_tc:6.2\
 digilentinc.com:ip:axi_dynclk:1.0\
 digilentinc.com:ip:rgb2dvi:1.2\
 xilinx.com:ip:v_axi4s_vid_out:4.0\
@@ -331,7 +331,7 @@ proc create_hier_cell_frontend_1 { parentCell nameHier } {
  ] $v_axi4s_vid_out_0
 
   # Create instance: vtc_out, and set properties
-  set vtc_out [ create_bd_cell -type ip -vlnv xilinx.com:ip:v_tc:6.1 vtc_out ]
+  set vtc_out [ create_bd_cell -type ip -vlnv xilinx.com:ip:v_tc:6.2 vtc_out ]
   set_property -dict [ list \
    CONFIG.enable_detection {false} \
  ] $vtc_out
@@ -443,14 +443,14 @@ proc create_hier_cell_frontend { parentCell nameHier } {
  ] $dvi2rgb_0
 
   # Create instance: v_vid_in_axi4s_0, and set properties
-  set v_vid_in_axi4s_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:v_vid_in_axi4s:4.0 v_vid_in_axi4s_0 ]
+  set v_vid_in_axi4s_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:v_vid_in_axi4s:5.0 v_vid_in_axi4s_0 ]
   set_property -dict [ list \
    CONFIG.C_ADDR_WIDTH {12} \
    CONFIG.C_HAS_ASYNC_CLK {1} \
  ] $v_vid_in_axi4s_0
 
   # Create instance: vtc_in, and set properties
-  set vtc_in [ create_bd_cell -type ip -vlnv xilinx.com:ip:v_tc:6.1 vtc_in ]
+  set vtc_in [ create_bd_cell -type ip -vlnv xilinx.com:ip:v_tc:6.2 vtc_in ]
   set_property -dict [ list \
    CONFIG.HAS_INTC_IF {true} \
    CONFIG.enable_generation {false} \
@@ -553,8 +553,8 @@ proc create_hier_cell_hdmi_out { parentCell nameHier } {
   # Create interface connections
   connect_bd_intf_net -intf_net Conn1 [get_bd_intf_pins TMDS_out] [get_bd_intf_pins frontend/TMDS_out]
   connect_bd_intf_net -intf_net Conn2 [get_bd_intf_pins S02_AXILite] [get_bd_intf_pins frontend/S02_AXILite]
-  connect_bd_intf_net -intf_net Conn7 [get_bd_intf_pins S03_AXILite] [get_bd_intf_pins color_convert/s_axi_AXILiteS]
-  connect_bd_intf_net -intf_net Conn8 [get_bd_intf_pins S01_AXILite] [get_bd_intf_pins pixel_unpack/s_axi_AXILiteS]
+  connect_bd_intf_net -intf_net Conn7 [get_bd_intf_pins S03_AXILite] [get_bd_intf_pins color_convert/s_axi_control]
+  connect_bd_intf_net -intf_net Conn8 [get_bd_intf_pins S01_AXILite] [get_bd_intf_pins pixel_unpack/s_axi_control]
   connect_bd_intf_net -intf_net axis_register_slice_0_M_AXIS [get_bd_intf_pins axis_register_slice_0/M_AXIS] [get_bd_intf_pins color_convert/stream_in_24]
   connect_bd_intf_net -intf_net color_convert_stream_out_24 [get_bd_intf_pins color_convert/stream_out_24] [get_bd_intf_pins frontend/video_in]
   connect_bd_intf_net -intf_net in_stream_1 [get_bd_intf_pins in_stream] [get_bd_intf_pins pixel_unpack/stream_in_32]
@@ -565,10 +565,10 @@ proc create_hier_cell_hdmi_out { parentCell nameHier } {
   # Create port connections
   connect_bd_net -net Net [get_bd_pins clk_100M] [get_bd_pins frontend/clk_100M]
   connect_bd_net -net Net1 [get_bd_pins periph_resetn_clk100M] [get_bd_pins frontend/periph_resetn_clk100M]
-  connect_bd_net -net aclk_1 [get_bd_pins clk_142M] [get_bd_pins axis_register_slice_0/aclk] [get_bd_pins color_convert/ap_clk] [get_bd_pins color_convert/control] [get_bd_pins frontend/clk_142M] [get_bd_pins pixel_unpack/ap_clk] [get_bd_pins pixel_unpack/control]
+  connect_bd_net -net aclk_1 [get_bd_pins clk_142M] [get_bd_pins axis_register_slice_0/aclk] [get_bd_pins color_convert/ap_clk] [get_bd_pins frontend/clk_142M] [get_bd_pins pixel_unpack/ap_clk]
   connect_bd_net -net hdmi_out_hpd_video_gpio_io_o [get_bd_pins hdmi_out_hpd] [get_bd_pins frontend/hdmi_out_hpd]
   connect_bd_net -net hdmi_out_hpd_video_ip2intc_irpt [get_bd_pins hdmi_out_hpd_irq] [get_bd_pins frontend/hdmi_out_hpd_irq]
-  connect_bd_net -net rst_ps7_0_100M_peripheral_aresetn [get_bd_pins periph_resetn_clk142M] [get_bd_pins axis_register_slice_0/aresetn] [get_bd_pins color_convert/ap_rst_n] [get_bd_pins color_convert/ap_rst_n_control] [get_bd_pins pixel_unpack/ap_rst_n] [get_bd_pins pixel_unpack/ap_rst_n_control]
+  connect_bd_net -net rst_ps7_0_100M_peripheral_aresetn [get_bd_pins periph_resetn_clk142M] [get_bd_pins axis_register_slice_0/aresetn] [get_bd_pins color_convert/ap_rst_n] [get_bd_pins pixel_unpack/ap_rst_n]
   connect_bd_net -net v_tc_0_irq [get_bd_pins vtc_out_irq] [get_bd_pins frontend/vtc_out_irq]
 
   # Restore current instance
@@ -646,8 +646,8 @@ proc create_hier_cell_hdmi_in { parentCell nameHier } {
 
   # Create interface connections
   connect_bd_intf_net -intf_net Conn3 [get_bd_intf_pins S02_AXILite] [get_bd_intf_pins frontend/S02_AXILite]
-  connect_bd_intf_net -intf_net Conn5 [get_bd_intf_pins S03_AXILite] [get_bd_intf_pins pixel_pack/s_axi_AXILiteS]
-  connect_bd_intf_net -intf_net Conn6 [get_bd_intf_pins S01_AXILite] [get_bd_intf_pins color_convert/s_axi_AXILiteS]
+  connect_bd_intf_net -intf_net Conn5 [get_bd_intf_pins S03_AXILite] [get_bd_intf_pins pixel_pack/s_axi_control]
+  connect_bd_intf_net -intf_net Conn6 [get_bd_intf_pins S01_AXILite] [get_bd_intf_pins color_convert/s_axi_control]
   connect_bd_intf_net -intf_net TMDS_1 [get_bd_intf_pins TMDS_in] [get_bd_intf_pins frontend/TMDS_in]
   connect_bd_intf_net -intf_net axis_register_slice_0_M_AXIS [get_bd_intf_pins axis_register_slice_0/M_AXIS] [get_bd_intf_pins pixel_pack/stream_in_24]
   connect_bd_intf_net -intf_net color_convert_stream_out_24 [get_bd_intf_pins axis_register_slice_0/S_AXIS] [get_bd_intf_pins color_convert/stream_out_24]
@@ -660,13 +660,13 @@ proc create_hier_cell_hdmi_in { parentCell nameHier } {
   connect_bd_net -net Net [get_bd_pins clk_100M] [get_bd_pins frontend/clk_100M]
   connect_bd_net -net Net1 [get_bd_pins periph_resetn_clk100M] [get_bd_pins frontend/periph_resetn_clk100M]
   connect_bd_net -net RefClk_1 [get_bd_pins clk_200M] [get_bd_pins frontend/clk_200M]
-  connect_bd_net -net aclk_1 [get_bd_pins clk_142M] [get_bd_pins axis_register_slice_0/aclk] [get_bd_pins color_convert/ap_clk] [get_bd_pins color_convert/control] [get_bd_pins frontend/clk_142M] [get_bd_pins pixel_pack/ap_clk] [get_bd_pins pixel_pack/control]
+  connect_bd_net -net aclk_1 [get_bd_pins clk_142M] [get_bd_pins axis_register_slice_0/aclk] [get_bd_pins color_convert/ap_clk] [get_bd_pins frontend/clk_142M] [get_bd_pins pixel_pack/ap_clk]
   connect_bd_net -net axi_gpio_video_gpio_io_o [get_bd_pins hdmi_in_hpd] [get_bd_pins frontend/hdmi_in_hpd]
   connect_bd_net -net axi_gpio_video_ip2intc_irpt [get_bd_pins hdmi_in_hpd_irq] [get_bd_pins frontend/hdmi_in_hpd_irq]
   connect_bd_net -net dvi2rgb_0_PixelClk [get_bd_pins PixelClk] [get_bd_pins frontend/PixelClk]
   connect_bd_net -net dvi2rgb_0_aPixelClkLckd [get_bd_pins aPixelClkLckd] [get_bd_pins frontend/aPixelClkLckd]
   connect_bd_net -net resetn_1 [get_bd_pins resetn] [get_bd_pins frontend/resetn]
-  connect_bd_net -net rst_ps7_0_100M_peripheral_aresetn [get_bd_pins periph_resetn_clk142M] [get_bd_pins axis_register_slice_0/aresetn] [get_bd_pins color_convert/ap_rst_n] [get_bd_pins color_convert/ap_rst_n_control] [get_bd_pins pixel_pack/ap_rst_n] [get_bd_pins pixel_pack/ap_rst_n_control]
+  connect_bd_net -net rst_ps7_0_100M_peripheral_aresetn [get_bd_pins periph_resetn_clk142M] [get_bd_pins axis_register_slice_0/aresetn] [get_bd_pins color_convert/ap_rst_n] [get_bd_pins pixel_pack/ap_rst_n]
   connect_bd_net -net v_tc_1_irq [get_bd_pins vtc_in_irq] [get_bd_pins frontend/vtc_in_irq]
   connect_bd_net -net vid_io_in_reset_1 [get_bd_pins vid_io_in_reset] [get_bd_pins frontend/vid_io_in_reset]
 
@@ -1237,7 +1237,7 @@ proc create_hier_cell_iic_subsystem { parentCell nameHier } {
   create_bd_pin -dir I -from 0 -to 0 -type rst s_axi_aresetn1
 
   # Create instance: iic_direct, and set properties
-  set iic_direct [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_iic:2.0 iic_direct ]
+  set iic_direct [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_iic:2.1 iic_direct ]
 
   # Create interface connections
   connect_bd_intf_net -intf_net Conn1 [get_bd_intf_pins arduino_direct_iic] [get_bd_intf_pins iic_direct/IIC]
@@ -1545,7 +1545,7 @@ proc create_hier_cell_trace_analyzer_pmoda { parentCell nameHier } {
  ] $axi_dma_0
 
   # Create instance: axis_data_fifo_0, and set properties
-  set axis_data_fifo_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axis_data_fifo:1.1 axis_data_fifo_0 ]
+  set axis_data_fifo_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axis_data_fifo:2.0 axis_data_fifo_0 ]
   set_property -dict [ list \
    CONFIG.FIFO_DEPTH {256} \
    CONFIG.HAS_TLAST {1} \
@@ -1637,7 +1637,7 @@ proc create_hier_cell_trace_analyzer_arduino { parentCell nameHier } {
  ] $axi_dma_0
 
   # Create instance: axis_data_fifo_0, and set properties
-  set axis_data_fifo_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axis_data_fifo:1.1 axis_data_fifo_0 ]
+  set axis_data_fifo_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axis_data_fifo:2.0 axis_data_fifo_0 ]
   set_property -dict [ list \
    CONFIG.FIFO_DEPTH {256} \
    CONFIG.HAS_TLAST {1} \
@@ -1737,7 +1737,7 @@ proc create_hier_cell_iop_pmodb { parentCell nameHier } {
  ] $gpio
 
   # Create instance: iic, and set properties
-  set iic [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_iic:2.0 iic ]
+  set iic [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_iic:2.1 iic ]
 
   # Create instance: intc, and set properties
   set intc [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_intc:4.1 intc ]
@@ -1775,7 +1775,7 @@ proc create_hier_cell_iop_pmodb { parentCell nameHier } {
   set logic_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant:1.1 logic_1 ]
 
   # Create instance: mb, and set properties
-  set mb [ create_bd_cell -type ip -vlnv xilinx.com:ip:microblaze:10.0 mb ]
+  set mb [ create_bd_cell -type ip -vlnv xilinx.com:ip:microblaze:11.0 mb ]
   set_property -dict [ list \
    CONFIG.C_DEBUG_ENABLED {1} \
    CONFIG.C_D_AXI {1} \
@@ -1784,7 +1784,7 @@ proc create_hier_cell_iop_pmodb { parentCell nameHier } {
  ] $mb
 
   # Create instance: mb_bram_ctrl, and set properties
-  set mb_bram_ctrl [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_bram_ctrl:4.0 mb_bram_ctrl ]
+  set mb_bram_ctrl [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_bram_ctrl:4.1 mb_bram_ctrl ]
   set_property -dict [ list \
    CONFIG.SINGLE_PORT_BRAM {1} \
  ] $mb_bram_ctrl
@@ -1930,7 +1930,7 @@ proc create_hier_cell_iop_pmoda { parentCell nameHier } {
  ] $gpio
 
   # Create instance: iic, and set properties
-  set iic [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_iic:2.0 iic ]
+  set iic [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_iic:2.1 iic ]
 
   # Create instance: intc, and set properties
   set intc [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_intc:4.1 intc ]
@@ -1968,7 +1968,7 @@ proc create_hier_cell_iop_pmoda { parentCell nameHier } {
   set logic_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant:1.1 logic_1 ]
 
   # Create instance: mb, and set properties
-  set mb [ create_bd_cell -type ip -vlnv xilinx.com:ip:microblaze:10.0 mb ]
+  set mb [ create_bd_cell -type ip -vlnv xilinx.com:ip:microblaze:11.0 mb ]
   set_property -dict [ list \
    CONFIG.C_DEBUG_ENABLED {1} \
    CONFIG.C_D_AXI {1} \
@@ -1977,7 +1977,7 @@ proc create_hier_cell_iop_pmoda { parentCell nameHier } {
  ] $mb
 
   # Create instance: mb_bram_ctrl, and set properties
-  set mb_bram_ctrl [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_bram_ctrl:4.0 mb_bram_ctrl ]
+  set mb_bram_ctrl [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_bram_ctrl:4.1 mb_bram_ctrl ]
   set_property -dict [ list \
    CONFIG.SINGLE_PORT_BRAM {1} \
  ] $mb_bram_ctrl
@@ -2187,7 +2187,7 @@ proc create_hier_cell_iop_arduino { parentCell nameHier } {
   set logic_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant:1.1 logic_1 ]
 
   # Create instance: mb, and set properties
-  set mb [ create_bd_cell -type ip -vlnv xilinx.com:ip:microblaze:10.0 mb ]
+  set mb [ create_bd_cell -type ip -vlnv xilinx.com:ip:microblaze:11.0 mb ]
   set_property -dict [ list \
    CONFIG.C_DEBUG_ENABLED {1} \
    CONFIG.C_D_AXI {1} \
@@ -2196,7 +2196,7 @@ proc create_hier_cell_iop_arduino { parentCell nameHier } {
  ] $mb
 
   # Create instance: mb_bram_ctrl, and set properties
-  set mb_bram_ctrl [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_bram_ctrl:4.0 mb_bram_ctrl ]
+  set mb_bram_ctrl [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_bram_ctrl:4.1 mb_bram_ctrl ]
   set_property -dict [ list \
    CONFIG.SINGLE_PORT_BRAM {1} \
  ] $mb_bram_ctrl
@@ -3677,15 +3677,15 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets iop_pmoda_pmoda_gpio] [get_bd_in
   create_bd_addr_seg -range 0x00010000 -offset 0x41220000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs video/hdmi_in/frontend/axi_gpio_hdmiin/S_AXI/Reg] SEG_axi_gpio_hdmiin_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x43000000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs video/axi_vdma/S_AXI_LITE/Reg] SEG_axi_vdma_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x41210000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs btns_gpio/S_AXI/Reg] SEG_btns_gpio_Reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C50000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs video/hdmi_in/color_convert/s_axi_AXILiteS/Reg] SEG_color_convert_Reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C60000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs video/hdmi_out/color_convert/s_axi_AXILiteS/Reg] SEG_color_convert_out_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x43C50000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs video/hdmi_in/color_convert/s_axi_control/Reg] SEG_color_convert_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x43C60000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs video/hdmi_out/color_convert/s_axi_control/Reg] SEG_color_convert_out_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x41250000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs leds_gpio/S_AXI/Reg] SEG_gpio_leds_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x41230000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs video/hdmi_out/frontend/hdmi_out_hpd_video/S_AXI/Reg] SEG_hdmi_out_hpd_video_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x40000000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs iop_pmoda/mb_bram_ctrl/S_AXI/Mem0] SEG_mb_bram_ctrl_1_Mem0
   create_bd_addr_seg -range 0x00010000 -offset 0x42000000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs iop_pmodb/mb_bram_ctrl/S_AXI/Mem0] SEG_mb_bram_ctrl_2_Mem0
   create_bd_addr_seg -range 0x00040000 -offset 0x44000000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs iop_arduino/mb_bram_ctrl/S_AXI/Mem0] SEG_mb_bram_ctrl_3_Mem0
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C40000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs video/hdmi_in/pixel_pack/s_axi_AXILiteS/Reg] SEG_pixel_pack_Reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C70000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs video/hdmi_out/pixel_unpack/s_axi_AXILiteS/Reg] SEG_pixel_unpack_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x43C40000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs video/hdmi_in/pixel_pack/s_axi_control/Reg] SEG_pixel_pack_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x43C70000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs video/hdmi_out/pixel_unpack/s_axi_control/Reg] SEG_pixel_unpack_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x41240000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs rgbleds_gpio/S_AXI/Reg] SEG_rgbleds_gpio_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x41200000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs switches_gpio/S_AXI/Reg] SEG_swsleds_gpio_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x41800000 [get_bd_addr_spaces ps7_0/Data] [get_bd_addr_segs system_interrupts/S_AXI/Reg] SEG_system_interrupts_Reg
@@ -3715,11 +3715,6 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets iop_pmoda_pmoda_gpio] [get_bd_in
   create_bd_addr_seg -range 0x00010000 -offset 0x41C50000 [get_bd_addr_spaces iop_arduino/mb/Data] [get_bd_addr_segs iop_arduino/timers_subsystem/timer_5/S_AXI/Reg] SEG_mb3_timer_5_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x40600000 [get_bd_addr_spaces iop_arduino/mb/Data] [get_bd_addr_segs iop_arduino/uartlite/S_AXI/Reg] SEG_mb3_uartlite_d1_d0_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x44A30000 [get_bd_addr_spaces iop_arduino/mb/Data] [get_bd_addr_segs iop_arduino/xadc/s_axi_lite/Reg] SEG_mb3_xadc_Reg
-  create_bd_addr_seg -range 0x20000000 -offset 0x20000000 [get_bd_addr_spaces iop_arduino/mb/Data] [get_bd_addr_segs ps7_0/S_AXI_GP0/GP0_DDR_LOWOCM] SEG_ps7_0_GP0_DDR_LOWOCM
-  create_bd_addr_seg -range 0x00400000 -offset 0xE0000000 [get_bd_addr_spaces iop_arduino/mb/Data] [get_bd_addr_segs ps7_0/S_AXI_GP0/GP0_IOP] SEG_ps7_0_GP0_IOP
-  create_bd_addr_seg -range 0x20000000 -offset 0x60000000 [get_bd_addr_spaces iop_arduino/mb/Data] [get_bd_addr_segs ps7_0/S_AXI_GP0/GP0_M_AXI_GP0] SEG_ps7_0_GP0_M_AXI_GP0
-  create_bd_addr_seg -range 0x40000000 -offset 0x80000000 [get_bd_addr_spaces iop_arduino/mb/Data] [get_bd_addr_segs ps7_0/S_AXI_GP0/GP0_M_AXI_GP1] SEG_ps7_0_GP0_M_AXI_GP1
-  create_bd_addr_seg -range 0x01000000 -offset 0xFC000000 [get_bd_addr_spaces iop_arduino/mb/Data] [get_bd_addr_segs ps7_0/S_AXI_GP0/GP0_QSPI_LINEAR] SEG_ps7_0_GP0_QSPI_LINEAR
   create_bd_addr_seg -range 0x00010000 -offset 0x40000000 [get_bd_addr_spaces iop_pmoda/mb/Data] [get_bd_addr_segs iop_pmoda/gpio/S_AXI/Reg] SEG_axi_gpio_0_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x40800000 [get_bd_addr_spaces iop_pmoda/mb/Data] [get_bd_addr_segs iop_pmoda/iic/S_AXI/Reg] SEG_axi_iic_0_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x44A10000 [get_bd_addr_spaces iop_pmoda/mb/Data] [get_bd_addr_segs iop_pmoda/spi/AXI_LITE/Reg] SEG_axi_quad_spi_0_Reg
@@ -3729,11 +3724,6 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets iop_pmoda_pmoda_gpio] [get_bd_in
   create_bd_addr_seg -range 0x00010000 -offset 0x00000000 [get_bd_addr_spaces iop_pmoda/mb/Data] [get_bd_addr_segs iop_pmoda/lmb/lmb_bram_if_cntlr/SLMB1/Mem] SEG_lmb_bram_if_cntlr_Mem
   create_bd_addr_seg -range 0x00010000 -offset 0x41200000 [get_bd_addr_spaces iop_pmoda/mb/Data] [get_bd_addr_segs iop_pmoda/intc/S_AXI/Reg] SEG_mb1_intc_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x41C00000 [get_bd_addr_spaces iop_pmoda/mb/Data] [get_bd_addr_segs iop_pmoda/timer/S_AXI/Reg] SEG_mb1_timer_Reg
-  create_bd_addr_seg -range 0x20000000 -offset 0x20000000 [get_bd_addr_spaces iop_pmoda/mb/Data] [get_bd_addr_segs ps7_0/S_AXI_GP0/GP0_DDR_LOWOCM] SEG_ps7_0_GP0_DDR_LOWOCM
-  create_bd_addr_seg -range 0x00400000 -offset 0xE0000000 [get_bd_addr_spaces iop_pmoda/mb/Data] [get_bd_addr_segs ps7_0/S_AXI_GP0/GP0_IOP] SEG_ps7_0_GP0_IOP
-  create_bd_addr_seg -range 0x20000000 -offset 0x60000000 [get_bd_addr_spaces iop_pmoda/mb/Data] [get_bd_addr_segs ps7_0/S_AXI_GP0/GP0_M_AXI_GP0] SEG_ps7_0_GP0_M_AXI_GP0
-  create_bd_addr_seg -range 0x40000000 -offset 0x80000000 [get_bd_addr_spaces iop_pmoda/mb/Data] [get_bd_addr_segs ps7_0/S_AXI_GP0/GP0_M_AXI_GP1] SEG_ps7_0_GP0_M_AXI_GP1
-  create_bd_addr_seg -range 0x01000000 -offset 0xFC000000 [get_bd_addr_spaces iop_pmoda/mb/Data] [get_bd_addr_segs ps7_0/S_AXI_GP0/GP0_QSPI_LINEAR] SEG_ps7_0_GP0_QSPI_LINEAR
   create_bd_addr_seg -range 0x00010000 -offset 0x44A20000 [get_bd_addr_spaces iop_pmodb/mb/Data] [get_bd_addr_segs iop_pmodb/io_switch/S_AXI/S_AXI_reg] SEG_io_switch_0_S_AXI_reg
   create_bd_addr_seg -range 0x00010000 -offset 0x40010000 [get_bd_addr_spaces iop_pmodb/mb/Data] [get_bd_addr_segs iop_pmodb/intr/S_AXI/Reg] SEG_iop_pmodb_intr_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x00000000 [get_bd_addr_spaces iop_pmodb/mb/Data] [get_bd_addr_segs iop_pmodb/lmb/lmb_bram_if_cntlr/SLMB1/Mem] SEG_lmb_bram_if_cntlr_Mem
@@ -3743,11 +3733,6 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets iop_pmoda_pmoda_gpio] [get_bd_in
   create_bd_addr_seg -range 0x00010000 -offset 0x41200000 [get_bd_addr_spaces iop_pmodb/mb/Data] [get_bd_addr_segs iop_pmodb/intc/S_AXI/Reg] SEG_mb2_intc_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x44A10000 [get_bd_addr_spaces iop_pmodb/mb/Data] [get_bd_addr_segs iop_pmodb/spi/AXI_LITE/Reg] SEG_mb2_spi_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x41C00000 [get_bd_addr_spaces iop_pmodb/mb/Data] [get_bd_addr_segs iop_pmodb/timer/S_AXI/Reg] SEG_mb2_timer_Reg
-  create_bd_addr_seg -range 0x20000000 -offset 0x20000000 [get_bd_addr_spaces iop_pmodb/mb/Data] [get_bd_addr_segs ps7_0/S_AXI_GP0/GP0_DDR_LOWOCM] SEG_ps7_0_GP0_DDR_LOWOCM
-  create_bd_addr_seg -range 0x00400000 -offset 0xE0000000 [get_bd_addr_spaces iop_pmodb/mb/Data] [get_bd_addr_segs ps7_0/S_AXI_GP0/GP0_IOP] SEG_ps7_0_GP0_IOP
-  create_bd_addr_seg -range 0x20000000 -offset 0x60000000 [get_bd_addr_spaces iop_pmodb/mb/Data] [get_bd_addr_segs ps7_0/S_AXI_GP0/GP0_M_AXI_GP0] SEG_ps7_0_GP0_M_AXI_GP0
-  create_bd_addr_seg -range 0x40000000 -offset 0x80000000 [get_bd_addr_spaces iop_pmodb/mb/Data] [get_bd_addr_segs ps7_0/S_AXI_GP0/GP0_M_AXI_GP1] SEG_ps7_0_GP0_M_AXI_GP1
-  create_bd_addr_seg -range 0x01000000 -offset 0xFC000000 [get_bd_addr_spaces iop_pmodb/mb/Data] [get_bd_addr_segs ps7_0/S_AXI_GP0/GP0_QSPI_LINEAR] SEG_ps7_0_GP0_QSPI_LINEAR
   create_bd_addr_seg -range 0x20000000 -offset 0x00000000 [get_bd_addr_spaces trace_analyzer_arduino/axi_dma_0/Data_S2MM] [get_bd_addr_segs ps7_0/S_AXI_HP2/HP2_DDR_LOWOCM] SEG_ps7_0_HP2_DDR_LOWOCM
   create_bd_addr_seg -range 0x20000000 -offset 0x00000000 [get_bd_addr_spaces trace_analyzer_pmoda/axi_dma_0/Data_S2MM] [get_bd_addr_segs ps7_0/S_AXI_HP2/HP2_DDR_LOWOCM] SEG_ps7_0_HP2_DDR_LOWOCM
   create_bd_addr_seg -range 0x20000000 -offset 0x00000000 [get_bd_addr_spaces video/axi_vdma/Data_MM2S] [get_bd_addr_segs ps7_0/S_AXI_HP0/HP0_DDR_LOWOCM] SEG_ps7_0_HP0_DDR_LOWOCM
@@ -3776,17 +3761,15 @@ create_root_design ""
 make_wrapper -files [get_files ./${overlay_name}/${overlay_name}.srcs/sources_1/bd/${design_name}/${design_name}.bd] -top
 add_files -norecurse ./${overlay_name}/${overlay_name}.srcs/sources_1/bd/${design_name}/hdl/${design_name}_wrapper.v
 set_property top ${design_name}_wrapper [current_fileset]
-import_files -fileset constrs_1 -norecurse ./vivado/constraints/${overlay_name}.xdc
+import_files -fileset constrs_1 -norecurse ./${overlay_name}.xdc
 update_compile_order -fileset sources_1
 
 # call implement
 launch_runs impl_1 -to_step write_bitstream -jobs 4
 wait_on_run impl_1
 
-# This hardware definition file will be used for microblaze projects
-file mkdir ./${overlay_name}/${overlay_name}.sdk
-write_hwdef -force  -file ./${overlay_name}/${overlay_name}.sdk/${overlay_name}.hdf
-file copy -force ./${overlay_name}/${overlay_name}.sdk/${overlay_name}.hdf .
+# Export hardware platform (XSA) for software projects (replaces removed write_hwdef/.hdf flow)
+write_hw_platform -fixed -include_bit -force ./${overlay_name}.xsa
 
 # move and rename bitstream to final location
 file copy -force ./${overlay_name}/${overlay_name}.runs/impl_1/${design_name}_wrapper.bit ${overlay_name}.bit
